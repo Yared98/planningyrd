@@ -105,12 +105,12 @@
   --color-danger-border: rgba(225, 29, 72, 0.25);
 
   --text-main: #0f172a;
-  --text-muted: #64748b;
-  --text-dim: #94a3b8;
+  --text-muted: #334155;
+  --text-dim: #475569;
 
-  --table-felt-bg: radial-gradient(ellipse at center, #e2e8f0 0%, #cbd5e1 75%, #94a3b8 100%);
-  --table-border: rgba(79, 70, 229, 0.35);
-  --table-glow: rgba(79, 70, 229, 0.1);
+  --table-felt-bg: radial-gradient(ellipse at center, #ffffff 0%, #f1f5f9 60%, #e2e8f0 100%);
+  --table-border: rgba(99, 102, 241, 0.4);
+  --table-glow: rgba(99, 102, 241, 0.08);
 
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.08);
@@ -348,6 +348,10 @@ input:focus, textarea:focus, select:focus {
   justify-content: center;
 }
 
+[data-theme="light"] .poker-table {
+  box-shadow: 0 20px 50px -10px rgba(99, 102, 241, 0.15), 0 8px 20px -4px rgba(0, 0, 0, 0.05), inset 0 0 35px var(--table-glow);
+}
+
 .table-center-hub {
   display: flex;
   flex-direction: column;
@@ -428,17 +432,31 @@ input:focus, textarea:focus, select:focus {
 
 .participant-name-tag {
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-main);
-  background: rgba(15, 23, 42, 0.85);
+  background: var(--bg-surface-elevated);
   backdrop-filter: blur(8px);
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: var(--radius-full);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-highlight);
+  box-shadow: var(--shadow-sm);
   white-space: nowrap;
-  max-width: 90px;
+  max-width: 110px;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+[data-theme="dark"] .participant-name-tag {
+  background: rgba(15, 23, 42, 0.9);
+  color: #f1f5f9;
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+[data-theme="light"] .participant-name-tag {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 /* ==========================================================================
@@ -528,8 +546,8 @@ input:focus, textarea:focus, select:focus {
   width: 42px;
   height: 60px;
   border-radius: var(--radius-sm);
-  border: 1px dashed var(--border-subtle);
-  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed var(--border-highlight);
+  background: var(--bg-subtle);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -589,8 +607,8 @@ input:focus, textarea:focus, select:focus {
 .deck-card-btn.is-selected {
   transform: translateY(-12px) scale(1.08);
   border-color: var(--color-primary);
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(79, 70, 229, 0.4) 100%);
-  box-shadow: 0 12px 28px -2px var(--color-primary-glow);
+  background: var(--color-primary);
+  box-shadow: 0 10px 24px var(--color-primary-glow);
   color: #ffffff;
 }
 
