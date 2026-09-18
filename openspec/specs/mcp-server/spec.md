@@ -19,3 +19,8 @@ Ele viabiliza que agentes de IA (como assistentes ágeis conectados ao Kanban/Ji
 
 ## 4. Sincronização em Tempo Real
 - Mutações via MCP persistem no SQLite e acionam broadcasts WebSocket para atualizar a mesa de poker dos participantes instantaneamente.
+
+## 5. Interface de Descoberta & Setup (UI)
+- **REQ-MCP-UI-001**: A aplicação DEVE expor um botão padronizado com ícone `Bot` e etiqueta "MCP" na barra superior da landing page (`LandingPage`) e na barra de ferramentas da sala ativa (`Header`).
+- **REQ-MCP-UI-002**: Ao clicar no botão, o modal `McpModal` DEVE exibir a URL do endpoint (`/mcp`), os recursos da sala (`planning://room/{id}/backlog` e `/consensus`), snippet JSON pronto para Claude Desktop e Cursor, catálogo de ferramentas e teste de ping síncrono.
+

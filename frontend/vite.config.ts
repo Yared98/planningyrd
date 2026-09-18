@@ -15,6 +15,10 @@ export default defineConfig({
         target: 'ws://127.0.0.1:3000',
         ws: true,
       },
+      '/mcp': {
+        target: 'http://127.0.0.1:3000',
+        changeOrigin: true,
+      },
     },
   },
 })

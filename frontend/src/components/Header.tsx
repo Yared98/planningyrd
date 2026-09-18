@@ -12,8 +12,10 @@ import {
   LogOut,
   Clock,
   Layers,
+  Bot,
 } from 'lucide-react';
 import { EcosystemSwitcher } from './EcosystemSwitcher';
+import { McpModal } from './McpModal';
 import { GithubIcon } from './Footer';
 import type { Participant, Room, Story } from '../types';
 
@@ -47,6 +49,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [localTheme, setLocalTheme] = useState<'dark' | 'light'>('dark');
   const theme = propTheme || localTheme;
   const [showReactions, setShowReactions] = useState(false);
+  const [showMcpModal, setShowMcpModal] = useState(false);
 
   const toggleTheme = () => {
     if (onToggleTheme) {
@@ -178,6 +181,29 @@ export const Header: React.FC<HeaderProps> = ({
           <FileSpreadsheet size={18} />
         </button>
 
+        {/* Botão MCP Padronizado */}
+        <button
+          onClick={() => setShowMcpModal(true)}
+          className="btn-secondary"
+          style={{
+            padding: '0.35rem 0.65rem',
+            borderRadius: 'var(--radius-full)',
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            background: 'var(--color-primary-subtle, rgba(99, 102, 241, 0.15))',
+            border: '1px solid var(--border-primary, rgba(99, 102, 241, 0.35))',
+            color: 'var(--color-primary)',
+            cursor: 'pointer',
+          }}
+          title={t('mcp.button_title', 'Configurar Servidor MCP (IA)')}
+        >
+          <Bot size={13} />
+          <span>MCP</span>
+        </button>
+
         <button className="btn-icon" onClick={toggleLanguage} title={t('nav.language')}>
           <Globe size={18} />
         </button>
@@ -226,6 +252,14 @@ export const Header: React.FC<HeaderProps> = ({
           <LogOut size={16} />
         </button>
       </div>
+
+      {/* Modal MCP */}
+      <McpModal
+        isOpen={showMcpModal}
+        onClose={() => setShowMcpModal(false)}
+        roomId={room.id}
+        isFacilitator={me?.is_facilitator}
+      />
     </header>
   );
 };

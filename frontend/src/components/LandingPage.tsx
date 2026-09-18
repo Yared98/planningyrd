@@ -16,8 +16,10 @@ import {
   Globe,
   Sun,
   Moon,
+  Bot,
 } from 'lucide-react';
 import { EcosystemSwitcher } from './EcosystemSwitcher';
+import { McpModal } from './McpModal';
 import { Footer, GithubIcon } from './Footer';
 import type { ParticipantRole } from '../types';
 import { getRecentRooms, removeRecentRoom, saveRecentRoom, type RecentRoom } from '../utils/recentRooms';
@@ -47,6 +49,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [activeTab, setActiveTab] = useState<'create' | 'join'>(
     initialRoomId ? 'join' : 'create'
   );
+  const [showMcpModal, setShowMcpModal] = useState(false);
 
   // Form states for Create
   const [createName, setCreateName] = useState('');
@@ -202,6 +205,30 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         }}
       >
         <EcosystemSwitcher currentApp="planning" />
+
+        {/* Botão MCP Padronizado */}
+        <button
+          onClick={() => setShowMcpModal(true)}
+          className="btn-secondary"
+          style={{
+            padding: '0.35rem 0.65rem',
+            borderRadius: 'var(--radius-full)',
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            background: 'var(--color-primary-subtle, rgba(99, 102, 241, 0.15))',
+            border: '1px solid var(--border-primary, rgba(99, 102, 241, 0.35))',
+            color: 'var(--color-primary)',
+            cursor: 'pointer',
+            transition: 'all var(--transition-fast, 0.15s ease)',
+          }}
+          title={t('mcp.button_title', 'Configurar Servidor MCP (IA)')}
+        >
+          <Bot size={13} />
+          <span>MCP</span>
+        </button>
 
         {/* Alternador de Idioma */}
         <button
@@ -970,6 +997,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       )}
 
       <Footer style={{ marginTop: '2.5rem', width: '100%', maxWidth: '480px' }} />
+
+      {/* Modal MCP */}
+      <McpModal
+        isOpen={showMcpModal}
+        onClose={() => setShowMcpModal(false)}
+      />
     </div>
   );
 };
