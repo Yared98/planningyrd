@@ -1,122 +1,213 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useState, useEffect } from 'react';
+import './i18n';
+import { usePlanningSocket } from './hooks/usePlanningSocket';
+import { Header } from './components/Header';
+import { PokerTable } from './components/PokerTable';
+import { VotingDeck } from './components/VotingDeck';
+import { FacilitatorControls } from './components/FacilitatorControls';
+import { BacklogDrawer } from './components/BacklogDrawer';
+import { ExportModal } from './components/ExportModal';
+import { LandingPage } from './components/LandingPage';
+import type { ParticipantRole } from './types';
+import { initAnalytics, trackPageView } from './utils/analytics';
 
-function App() {
-  const [count, setCount] = useState(0)
+export function App() {
+  useEffect(() => {
+    initAnalytics();
+  }, []);
+
+  // Read URL query parameter for room
+  const [urlRoomId] = useState<string | null>(() => {
+    return new URLSearchParams(window.location.search).get('room');
+  });
+
+  // Active user session state
+  const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (activeRoomId) {
+      trackPageView('/room', 'PlanningYrd — Sala de Votação');
+    } else {
+      trackPageView('/', 'PlanningYrd — Início');
+    }
+  }, [activeRoomId]);
+
+  const [participantId] = useState<string>(() => {
+    let pid = localStorage.getItem('planningyrd_participant_id');
+    if (!pid) {
+      pid = `usr_${Math.random().toString(36).substring(2, 11)}`;
+      localStorage.setItem('planningyrd_participant_id', pid);
+    }
+    return pid;
+  });
+
+  const [userName, setUserName] = useState<string>('');
+  const [userAvatar, setUserAvatar] = useState<string>('🦊');
+  const [userRole, setUserRole] = useState<ParticipantRole>('estimator');
+  const [facilitatorToken, setFacilitatorToken] = useState<string | null>(null);
+
+  // Modals / Drawers state
+  const [isBacklogOpen, setIsBacklogOpen] = useState(false);
+  const [isExportOpen, setIsExportOpen] = useState(false);
+
+  const handleJoinRoom = (
+    roomId: string,
+    name: string,
+    avatar: string,
+    role: ParticipantRole,
+    token?: string
+  ) => {
+    setActiveRoomId(roomId);
+    setUserName(name);
+    setUserAvatar(avatar);
+    setUserRole(role);
+    if (token) setFacilitatorToken(token);
+
+    // Update URL without full refresh
+    const newUrl = `${window.location.pathname}?room=${roomId}`;
+    window.history.pushState({ path: newUrl }, '', newUrl);
+  };
+
+  const handleLeaveRoom = () => {
+    setActiveRoomId(null);
+    const newUrl = window.location.pathname;
+    window.history.pushState({ path: newUrl }, '', newUrl);
+  };
+
+  // WebSocket connection when activeRoomId is set
+  const socket = usePlanningSocket({
+    roomId: activeRoomId || '',
+    participantId,
+    name: userName,
+    avatar: userAvatar,
+    role: userRole,
+    facilitatorToken,
+  });
+
+  if (!activeRoomId) {
+    return (
+      <LandingPage
+        initialRoomId={urlRoomId}
+        onJoinRoom={handleJoinRoom}
+      />
+    );
+  }
+
+  const me = socket.participants.find((p) => p.id === participantId) || {
+    id: participantId,
+    name: userName,
+    avatar: userAvatar,
+    role: userRole,
+    is_facilitator: !!facilitatorToken,
+    has_voted: false,
+  };
+
+  const isFacilitator = me.is_facilitator;
+  const currentRoom = socket.room || {
+    id: activeRoomId,
+    name: 'Carregando...',
+    deck_type: 'fibonacci',
+    status: 'voting',
+    auto_reveal: false,
+    show_average: true,
+    timer_seconds_remaining: 0,
+    timer_is_running: false,
+    created_at: 0,
+  };
+
+  const handleNextStory = () => {
+    const pendingStories = socket.stories.filter((s) => s.status === 'pending');
+    if (pendingStories.length > 0) {
+      socket.selectStory(pendingStories[0].id);
+    } else {
+      socket.resetRound();
+    }
+  };
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
+    <div className="app-container">
+      {/* Top Navigation */}
+      <Header
+        room={currentRoom}
+        currentStory={socket.currentStory}
+        me={me}
+        timer={socket.timer}
+        onOpenBacklog={() => setIsBacklogOpen(true)}
+        onOpenExport={() => setIsExportOpen(true)}
+        onSendReaction={socket.sendReaction}
+        onLeaveRoom={handleLeaveRoom}
+      />
+
+      {/* Main Stage & Poker Table */}
+      <main className="main-stage">
+        <PokerTable
+          room={currentRoom}
+          participants={socket.participants}
+          currentStory={socket.currentStory}
+          stats={socket.stats}
+          deckCards={socket.cards}
+          isFacilitator={isFacilitator}
+          onConfirmScore={socket.saveStoryScore}
+        />
+      </main>
+
+      {/* Facilitator Controls Floating Bar */}
+      {isFacilitator && (
+        <FacilitatorControls
+          roomStatus={currentRoom.status}
+          hasStories={socket.stories.length > 0}
+          timerIsRunning={socket.timer.isRunning}
+          onRevealCards={socket.revealCards}
+          onResetRound={socket.resetRound}
+          onNextStory={handleNextStory}
+          onTimerAction={socket.timerAction}
+          onChangeDeck={socket.changeDeck}
+        />
+      )}
+
+      {/* Bottom Deck for card selection */}
+      <VotingDeck
+        cards={socket.cards}
+        selectedCard={me.card}
+        role={userRole}
+        roomStatus={currentRoom.status}
+        onSelectCard={socket.castVote}
+        onRetractVote={socket.retractVote}
+      />
+
+      {/* Backlog Slide-over Drawer */}
+      <BacklogDrawer
+        isOpen={isBacklogOpen}
+        stories={socket.stories}
+        currentStoryId={socket.currentStory?.id}
+        onClose={() => setIsBacklogOpen(false)}
+        onAddStory={socket.addStory}
+        onSelectStory={socket.selectStory}
+      />
+
+      {/* Export Modal */}
+      <ExportModal
+        isOpen={isExportOpen}
+        room={currentRoom}
+        stories={socket.stories}
+        onClose={() => setIsExportOpen(false)}
+      />
+
+      {/* Floating Reactions Layer */}
+      {socket.reactions.map((r) => (
+        <div
+          key={r.id}
+          className="floating-reaction"
+          style={{
+            left: `${r.x}%`,
+            bottom: '120px',
+          }}
         >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+          {r.emoji}
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      ))}
+    </div>
+  );
 }
 
-export default App
+export default App;
