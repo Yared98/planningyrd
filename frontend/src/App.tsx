@@ -100,17 +100,6 @@ export function App() {
     facilitatorToken,
   });
 
-  if (!activeRoomId) {
-    return (
-      <LandingPage
-        initialRoomId={urlRoomId}
-        onJoinRoom={handleJoinRoom}
-        theme={theme}
-        onToggleTheme={toggleTheme}
-      />
-    );
-  }
-
   const me = socket.participants.find((p) => p.id === participantId) || {
     id: participantId,
     name: userName,
@@ -122,7 +111,7 @@ export function App() {
 
   const isFacilitator = me.is_facilitator;
   const currentRoom = socket.room || {
-    id: activeRoomId,
+    id: activeRoomId || '',
     name: 'Carregando...',
     deck_type: 'fibonacci',
     status: 'voting',
@@ -134,7 +123,7 @@ export function App() {
   };
 
   useEffect(() => {
-    if (socket.room && socket.room.id) {
+    if (activeRoomId && socket.room && socket.room.id) {
       saveRecentRoom({
         id: socket.room.id,
         name: socket.room.name,
@@ -142,7 +131,18 @@ export function App() {
         role: userRole === 'spectator' ? 'spectator' : (isFacilitator ? 'facilitator' : 'estimator'),
       });
     }
-  }, [socket.room, facilitatorToken, userRole, isFacilitator]);
+  }, [activeRoomId, socket.room, facilitatorToken, userRole, isFacilitator]);
+
+  if (!activeRoomId) {
+    return (
+      <LandingPage
+        initialRoomId={urlRoomId}
+        onJoinRoom={handleJoinRoom}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+      />
+    );
+  }
 
   const handleNextStory = () => {
     const pendingStories = socket.stories.filter((s) => s.status === 'pending');
