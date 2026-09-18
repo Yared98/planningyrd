@@ -233,6 +233,16 @@ export const FacilitatorControls: React.FC<FacilitatorControlsProps> = ({
               >
                 Potências de 2
               </button>
+              <button
+                className="btn-secondary"
+                style={{ fontSize: '0.75rem', justifyContent: 'flex-start' }}
+                onClick={() => {
+                  onChangeDeck('one_to_ten');
+                  setShowDeckMenu(false);
+                }}
+              >
+                1 a 10 (Sequencial)
+              </button>
             </div>
           )}
         </div>

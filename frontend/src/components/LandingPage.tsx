@@ -415,6 +415,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <option value="modified_fibonacci">{t('lobby.deckModified')}</option>
                 <option value="tshirt">{t('lobby.deckTShirt')}</option>
                 <option value="powers_of_2">{t('lobby.deckPowersOf2')}</option>
+                <option value="one_to_ten">{t('lobby.deckOneToTen')}</option>
               </select>
             </div>
 

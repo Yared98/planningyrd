@@ -10,6 +10,7 @@ Definir o mecanismo de votação cega, mascaramento de votos durante a rodada, b
 - **Fibonacci Modificado:** `["0", "½", "1", "2", "3", "5", "8", "13", "20", "40", "100", "?", "☕"]`
 - **T-Shirt Sizes:** `["XS", "S", "M", "L", "XL", "XXL", "?"]`
 - **Potências de 2:** `["1", "2", "4", "8", "16", "32", "64", "?"]`
+- **Sequencial / Linear (1 a 10):** `["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "?", "☕"]`
 
 ### 2. Votação Cega e Mascaramento
 - **Given** uma rodada de votação em andamento

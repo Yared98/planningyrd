@@ -10,6 +10,7 @@ pub enum DeckType {
     ModifiedFibonacci,
     TShirt,
     PowersOf2,
+    OneToTen,
     Custom,
 }
 
@@ -19,6 +20,7 @@ impl DeckType {
             "modified_fibonacci" => DeckType::ModifiedFibonacci,
             "tshirt" => DeckType::TShirt,
             "powers_of_2" => DeckType::PowersOf2,
+            "one_to_ten" | "sequential" | "1-10" | "1_to_10" => DeckType::OneToTen,
             "custom" => DeckType::Custom,
             _ => DeckType::Fibonacci,
         }
@@ -30,6 +32,7 @@ impl DeckType {
             DeckType::ModifiedFibonacci => "modified_fibonacci",
             DeckType::TShirt => "tshirt",
             DeckType::PowersOf2 => "powers_of_2",
+            DeckType::OneToTen => "one_to_ten",
             DeckType::Custom => "custom",
         }
     }
@@ -56,6 +59,12 @@ impl DeckType {
                 .into_iter()
                 .map(String::from)
                 .collect(),
+            DeckType::OneToTen => vec![
+                "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "?", "☕",
+            ]
+            .into_iter()
+            .map(String::from)
+            .collect(),
             DeckType::Custom => vec!["1", "2", "3", "5", "8", "?"]
                 .into_iter()
                 .map(String::from)
