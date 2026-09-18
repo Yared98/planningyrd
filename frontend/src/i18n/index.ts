@@ -101,6 +101,11 @@ const resources = {
         confirmScoreTitle: 'Confirmar Pontuação Final da História:',
         confirmScoreButton: 'Salvar Pontuação e Avançar',
         selectScorePrompt: 'Selecione a pontuação acordada pelo time:',
+        viewTable: 'Ver Mesa',
+        closeModal: 'Fechar e Ver Mesa',
+        detailsButton: 'Ver Estatísticas',
+        participantVotes: 'Votos dos Participantes',
+        quickConfirm: 'Confirmar ({{val}})',
       },
       backlog: {
         drawerTitle: 'Backlog de Histórias',
@@ -255,6 +260,11 @@ const resources = {
         confirmScoreTitle: 'Confirm Story Final Score:',
         confirmScoreButton: 'Save Score & Next',
         selectScorePrompt: 'Select team-agreed score:',
+        viewTable: 'View Table',
+        closeModal: 'Close & View Table',
+        detailsButton: 'View Analytics',
+        participantVotes: 'Round Votes',
+        quickConfirm: 'Confirm ({{val}})',
       },
       backlog: {
         drawerTitle: 'Stories Backlog',

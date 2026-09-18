@@ -149,6 +149,7 @@ export const PokerTable: React.FC<PokerTableProps> = ({
               isFacilitator={isFacilitator}
               deckCards={deckCards}
               onConfirmScore={onConfirmScore}
+              participants={participants}
             />
           ) : (
             <div
