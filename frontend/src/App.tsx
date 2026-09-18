@@ -10,6 +10,7 @@ import { ExportModal } from './components/ExportModal';
 import { LandingPage } from './components/LandingPage';
 import type { ParticipantRole } from './types';
 import { initAnalytics, trackPageView } from './utils/analytics';
+import { saveRecentRoom } from './utils/recentRooms';
 
 export function App() {
   useEffect(() => {
@@ -31,6 +32,21 @@ export function App() {
       trackPageView('/', 'PlanningYrd — Início');
     }
   }, [activeRoomId]);
+
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('planningyrd_theme') as 'dark' | 'light') || 'dark';
+  });
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    localStorage.setItem('planningyrd_theme', next);
+    document.documentElement.setAttribute('data-theme', next);
+  };
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   const [participantId] = useState<string>(() => {
     let pid = localStorage.getItem('planningyrd_participant_id');
@@ -89,6 +105,8 @@ export function App() {
       <LandingPage
         initialRoomId={urlRoomId}
         onJoinRoom={handleJoinRoom}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
     );
   }
@@ -115,6 +133,17 @@ export function App() {
     created_at: 0,
   };
 
+  useEffect(() => {
+    if (socket.room && socket.room.id) {
+      saveRecentRoom({
+        id: socket.room.id,
+        name: socket.room.name,
+        facilitatorToken: facilitatorToken || undefined,
+        role: userRole === 'spectator' ? 'spectator' : (isFacilitator ? 'facilitator' : 'estimator'),
+      });
+    }
+  }, [socket.room, facilitatorToken, userRole, isFacilitator]);
+
   const handleNextStory = () => {
     const pendingStories = socket.stories.filter((s) => s.status === 'pending');
     if (pendingStories.length > 0) {
@@ -136,6 +165,8 @@ export function App() {
         onOpenExport={() => setIsExportOpen(true)}
         onSendReaction={socket.sendReaction}
         onLeaveRoom={handleLeaveRoom}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       {/* Main Stage & Poker Table */}

@@ -1,9 +1,26 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Layers, Plus, ArrowRight, Eye, UserCheck } from 'lucide-react';
+import {
+  Layers,
+  Plus,
+  ArrowRight,
+  Eye,
+  UserCheck,
+  History,
+  Shield,
+  ExternalLink,
+  Trash2,
+  Share2,
+  Check,
+  AlertTriangle,
+  Globe,
+  Sun,
+  Moon,
+} from 'lucide-react';
 import { EcosystemSwitcher } from './EcosystemSwitcher';
-import { Footer } from './Footer';
+import { Footer, GithubIcon } from './Footer';
 import type { ParticipantRole } from '../types';
+import { getRecentRooms, removeRecentRoom, saveRecentRoom, type RecentRoom } from '../utils/recentRooms';
 
 interface LandingPageProps {
   initialRoomId?: string | null;
@@ -14,6 +31,8 @@ interface LandingPageProps {
     role: ParticipantRole,
     facilitatorToken?: string
   ) => void;
+  theme?: 'dark' | 'light';
+  onToggleTheme?: () => void;
 }
 
 const AVATARS = ['🦊', '🐺', '🦁', '🐯', '🦅', '🦉', '🐼', '🚀', '⚡', '💎'];
@@ -21,8 +40,10 @@ const AVATARS = ['🦊', '🐺', '🦁', '🐯', '🦅', '🦉', '🐼', '🚀',
 export const LandingPage: React.FC<LandingPageProps> = ({
   initialRoomId,
   onJoinRoom,
+  theme = 'dark',
+  onToggleTheme,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<'create' | 'join'>(
     initialRoomId ? 'join' : 'create'
   );
@@ -46,6 +67,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const [recentRooms, setRecentRooms] = useState<RecentRoom[]>(() => getRecentRooms());
+  const [roomToDelete, setRoomToDelete] = useState<RecentRoom | null>(null);
+  const [copiedRoomId, setCopiedRoomId] = useState<string | null>(null);
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,6 +98,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       localStorage.setItem('planningyrd_nickname', creatorNickname.trim());
       localStorage.setItem(`facilitator_${data.id}`, data.facilitator_token);
 
+      saveRecentRoom({
+        id: data.id,
+        name: createName.trim(),
+        facilitatorToken: data.facilitator_token,
+        role: 'facilitator',
+      });
+      setRecentRooms(getRecentRooms());
+
       onJoinRoom(
         data.id,
         creatorNickname.trim(),
@@ -94,6 +127,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     localStorage.setItem('planningyrd_nickname', joinNickname.trim());
     const storedToken = localStorage.getItem(`facilitator_${joinRoomId.trim()}`);
 
+    saveRecentRoom({
+      id: joinRoomId.trim(),
+      name: joinRoomId.trim(),
+      facilitatorToken: storedToken || undefined,
+      role: joinRole,
+    });
+    setRecentRooms(getRecentRooms());
+
     onJoinRoom(
       joinRoomId.trim(),
       joinNickname.trim(),
@@ -102,6 +143,38 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       storedToken || undefined
     );
   };
+
+  const handleDirectJoin = (room: RecentRoom) => {
+    const nick = (creatorNickname || joinNickname || localStorage.getItem('planningyrd_nickname') || '').trim() || 'Participante';
+    const avatar = createAvatar || joinAvatar || '🦊';
+    onJoinRoom(
+      room.id,
+      nick,
+      avatar,
+      room.role === 'spectator' ? 'spectator' : 'estimator',
+      room.facilitatorToken || undefined
+    );
+  };
+
+  const handleCopyInvite = (roomId: string) => {
+    const url = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
+    navigator.clipboard.writeText(url);
+    setCopiedRoomId(roomId);
+    setTimeout(() => setCopiedRoomId(null), 2000);
+  };
+
+  const handleRemoveRoom = (id: string) => {
+    const updated = removeRecentRoom(id);
+    setRecentRooms(updated);
+  };
+
+  const toggleLanguage = () => {
+    const next = i18n.language.startsWith('en') ? 'pt' : 'en';
+    i18n.changeLanguage(next);
+  };
+
+  const facilitatorRooms = recentRooms.filter((r) => r.role === 'facilitator' || r.facilitatorToken);
+  const participantRooms = recentRooms.filter((r) => r.role !== 'facilitator' && !r.facilitatorToken);
 
   return (
     <div
@@ -112,31 +185,101 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         alignItems: 'center',
         justifyContent: 'center',
         padding: '2rem 1rem',
-        background: 'var(--bg-canvas-radial, radial-gradient(circle at 50% 20%, #151d32 0%, var(--bg-canvas) 80%))',
+        background: 'transparent',
+        position: 'relative',
       }}
     >
-      <div style={{ maxWidth: '480px', width: '100%', textAlign: 'center', marginBottom: '2rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-          <div
+      {/* Top Bar Controls — EcosystemSwitcher + Language + Theme + GitHub */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '1.25rem',
+          right: '1.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.6rem',
+          zIndex: 10,
+        }}
+      >
+        <EcosystemSwitcher currentApp="planning" />
+
+        {/* Alternador de Idioma */}
+        <button
+          onClick={toggleLanguage}
+          className="btn-secondary"
+          style={{
+            padding: '0.35rem 0.65rem',
+            borderRadius: 'var(--radius-full)',
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            background: 'var(--bg-subtle)',
+            border: '1px solid var(--border-subtle)',
+            color: 'var(--text-main)',
+            cursor: 'pointer',
+          }}
+          title={t('app.languageToggle', 'Alternar idioma')}
+        >
+          <Globe size={13} />
+          <span>{i18n.language.startsWith('en') ? 'EN' : 'PT'}</span>
+        </button>
+
+        {/* Alternador de Tema */}
+        {onToggleTheme && (
+          <button
+            onClick={onToggleTheme}
+            className="btn-secondary"
             style={{
+              padding: '0.35rem 0.65rem',
+              borderRadius: 'var(--radius-full)',
+              fontSize: '0.75rem',
+              fontWeight: 600,
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '0.75rem',
+              gap: '0.35rem',
               background: 'var(--bg-subtle)',
               border: '1px solid var(--border-subtle)',
-              padding: '0.5rem 1rem',
-              borderRadius: 'var(--radius-full)',
+              color: 'var(--text-main)',
+              cursor: 'pointer',
             }}
+            title={theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
           >
-            <div className="brand-icon-box">
-              <Layers size={18} />
-            </div>
-            <span style={{ fontWeight: 800, fontSize: '1.25rem', letterSpacing: '-0.02em' }}>
-              PlanningYrd
-            </span>
-          </div>
+            {theme === 'dark' ? <Sun size={14} color="#fbbf24" /> : <Moon size={14} color="var(--color-primary)" />}
+          </button>
+        )}
 
-          <EcosystemSwitcher currentApp="planning" />
+        {/* Link GitHub */}
+        <a
+          href="https://github.com/Yared98/planningyrd"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            padding: '0.35rem 0.55rem',
+            borderRadius: 'var(--radius-full)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            textDecoration: 'none',
+            color: 'var(--text-main)',
+            background: 'var(--bg-subtle)',
+            border: '1px solid var(--border-subtle)',
+          }}
+          title="Ver código-fonte do PlanningYrd no GitHub"
+          aria-label="GitHub"
+        >
+          <GithubIcon size={14} />
+        </a>
+      </div>
+
+      <div style={{ maxWidth: '480px', width: '100%', textAlign: 'center', marginBottom: '2rem' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.75rem', background: 'var(--bg-subtle)', border: '1px solid var(--border-subtle)', padding: '0.5rem 1rem', borderRadius: 'var(--radius-full)', marginBottom: '1rem' }}>
+          <div className="brand-icon-box">
+            <Layers size={18} />
+          </div>
+          <span style={{ fontWeight: 800, fontSize: '1.25rem', letterSpacing: '-0.02em' }}>
+            PlanningYrd
+          </span>
         </div>
 
         <h1 style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.2 }}>
@@ -427,7 +570,404 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </button>
           </form>
         )}
+
+        {/* Histórico: Salas que Facilitei */}
+        {facilitatorRooms.length > 0 && (
+          <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', color: 'var(--text-main)', fontSize: '0.85rem', fontWeight: 700 }}>
+                <Shield size={15} color="var(--color-primary)" />
+                <span>{t('lobby.recentFacilitatorTitle')}</span>
+              </div>
+              <span
+                style={{
+                  fontSize: '0.72rem',
+                  color: 'var(--text-dim)',
+                  background: 'var(--bg-subtle)',
+                  padding: '0.15rem 0.5rem',
+                  borderRadius: 'var(--radius-full)',
+                }}
+              >
+                {facilitatorRooms.length}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', maxHeight: 220, overflowY: 'auto', paddingRight: '0.25rem' }}>
+              {facilitatorRooms.map((room) => (
+                <div
+                  key={room.id}
+                  style={{
+                    background: 'var(--bg-subtle)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '0.75rem 0.9rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '0.75rem',
+                    transition: 'all var(--transition-fast)',
+                  }}
+                >
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div
+                      style={{
+                        fontSize: '0.85rem',
+                        fontWeight: 700,
+                        color: 'var(--text-main)',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {room.name}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '0.15rem' }}>
+                      {new Date(room.updatedAt).toLocaleDateString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyInvite(room.id)}
+                      title={t('lobby.copyLink')}
+                      style={{
+                        background: 'var(--bg-surface)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: 'var(--radius-sm)',
+                        padding: '0.35rem 0.55rem',
+                        fontSize: '0.75rem',
+                        color: 'var(--text-muted)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.3rem',
+                      }}
+                    >
+                      {copiedRoomId === room.id ? (
+                        <Check size={12} color="var(--color-success)" />
+                      ) : (
+                        <Share2 size={12} />
+                      )}
+                      <span>{copiedRoomId === room.id ? t('lobby.copied') : 'Link'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDirectJoin(room)}
+                      style={{
+                        background: 'var(--color-primary-subtle)',
+                        border: '1px solid var(--color-primary)',
+                        borderRadius: 'var(--radius-sm)',
+                        padding: '0.35rem 0.65rem',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        color: 'var(--color-primary)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.3rem',
+                        transition: 'all var(--transition-fast)',
+                      }}
+                    >
+                      <span>{t('lobby.accessButton')}</span>
+                      <ExternalLink size={12} />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setRoomToDelete(room)}
+                      title={t('lobby.removeTooltip')}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text-dim)',
+                        cursor: 'pointer',
+                        padding: '0.3rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--color-danger)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-dim)'; }}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Histórico: Salas que Participei */}
+        {participantRooms.length > 0 && (
+          <div style={{ marginTop: facilitatorRooms.length > 0 ? '1.25rem' : '2rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', color: 'var(--text-main)', fontSize: '0.85rem', fontWeight: 700 }}>
+                <History size={15} color="var(--text-dim)" />
+                <span>{t('lobby.recentParticipantTitle')}</span>
+              </div>
+              <span
+                style={{
+                  fontSize: '0.72rem',
+                  color: 'var(--text-dim)',
+                  background: 'var(--bg-subtle)',
+                  padding: '0.15rem 0.5rem',
+                  borderRadius: 'var(--radius-full)',
+                }}
+              >
+                {participantRooms.length}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', maxHeight: 220, overflowY: 'auto', paddingRight: '0.25rem' }}>
+              {participantRooms.map((room) => (
+                <div
+                  key={room.id}
+                  style={{
+                    background: 'var(--bg-subtle)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '0.75rem 0.9rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '0.75rem',
+                    transition: 'all var(--transition-fast)',
+                  }}
+                >
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div
+                      style={{
+                        fontSize: '0.85rem',
+                        fontWeight: 700,
+                        color: 'var(--text-main)',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {room.name}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.15rem' }}>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>
+                        {new Date(room.updatedAt).toLocaleDateString('pt-BR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: '0.68rem',
+                          padding: '0.1rem 0.4rem',
+                          borderRadius: 'var(--radius-full)',
+                          background: room.role === 'spectator' ? 'var(--bg-subtle)' : 'var(--color-primary-subtle)',
+                          color: room.role === 'spectator' ? 'var(--text-muted)' : 'var(--color-primary)',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {room.role === 'spectator' ? t('table.spectator') : t('lobby.roleEstimator').split(' ')[0]}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyInvite(room.id)}
+                      title={t('lobby.copyLink')}
+                      style={{
+                        background: 'var(--bg-surface)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: 'var(--radius-sm)',
+                        padding: '0.35rem 0.55rem',
+                        fontSize: '0.75rem',
+                        color: 'var(--text-muted)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.3rem',
+                      }}
+                    >
+                      {copiedRoomId === room.id ? (
+                        <Check size={12} color="var(--color-success)" />
+                      ) : (
+                        <Share2 size={12} />
+                      )}
+                      <span>{copiedRoomId === room.id ? t('lobby.copied') : 'Link'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDirectJoin(room)}
+                      style={{
+                        background: 'var(--bg-surface)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: 'var(--radius-sm)',
+                        padding: '0.35rem 0.65rem',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        color: 'var(--text-main)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.3rem',
+                        transition: 'all var(--transition-fast)',
+                      }}
+                    >
+                      <span>{t('lobby.accessButton')}</span>
+                      <ExternalLink size={12} />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setRoomToDelete(room)}
+                      title={t('lobby.removeTooltip')}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text-dim)',
+                        cursor: 'pointer',
+                        padding: '0.3rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--color-danger)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-dim)'; }}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Modal de Confirmação para Remoção de Sala */}
+      {roomToDelete && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(9, 13, 22, 0.75)',
+            backdropFilter: 'blur(12px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+            padding: '1.5rem',
+          }}
+        >
+          <div
+            style={{
+              maxWidth: 440,
+              width: '100%',
+              padding: '1.75rem',
+              background: 'var(--bg-surface-elevated)',
+              border: '1px solid var(--border-highlight)',
+              borderRadius: 'var(--radius-xl)',
+              boxShadow: 'var(--shadow-lg)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.85rem' }}>
+              <div
+                style={{
+                  background: 'var(--color-danger-bg)',
+                  border: '1px solid var(--color-danger-border)',
+                  color: 'var(--color-danger)',
+                  padding: '0.6rem',
+                  borderRadius: 'var(--radius-md)',
+                  display: 'flex',
+                  flexShrink: 0,
+                }}
+              >
+                <AlertTriangle size={22} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
+                  {t('lobby.removeTitle')}
+                </h3>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '0.4rem 0 0 0', lineHeight: 1.45 }}>
+                  {t('lobby.removeConfirm1')} <strong style={{ color: 'var(--text-main)' }}>"{roomToDelete.name}"</strong> {t('lobby.removeConfirm2')}
+                </p>
+              </div>
+            </div>
+
+            <div
+              style={{
+                background: 'var(--bg-subtle)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 'var(--radius-sm)',
+                padding: '0.65rem 0.85rem',
+                fontSize: '0.75rem',
+                color: 'var(--text-dim)',
+                lineHeight: 1.4,
+              }}
+            >
+              {t('lobby.removeWarning')}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', marginTop: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setRoomToDelete(null)}
+                style={{
+                  background: 'var(--bg-subtle)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '0.55rem 1rem',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  color: 'var(--text-main)',
+                  cursor: 'pointer',
+                  transition: 'all var(--transition-fast)',
+                }}
+              >
+                {t('lobby.cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleRemoveRoom(roomToDelete.id);
+                  setRoomToDelete(null);
+                }}
+                style={{
+                  background: 'var(--color-danger)',
+                  border: 'none',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '0.55rem 1.1rem',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  color: '#ffffff',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  boxShadow: 'var(--shadow-sm)',
+                  transition: 'all var(--transition-fast)',
+                }}
+              >
+                <Trash2 size={14} />
+                <span>{t('lobby.confirmRemove')}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer style={{ marginTop: '2.5rem', width: '100%', maxWidth: '480px' }} />
     </div>

@@ -133,7 +133,8 @@ html, body, #root {
   width: 100%;
   min-height: 100vh;
   font-family: var(--font-sans);
-  background-color: var(--bg-canvas);
+  background: var(--bg-canvas-radial, radial-gradient(circle at 50% 20%, #151d32 0%, var(--bg-canvas) 80%));
+  background-attachment: fixed;
   color: var(--text-main);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -172,7 +173,7 @@ input:focus, textarea:focus, select:focus {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: var(--bg-canvas);
+  background: transparent;
 }
 
 /* Header */

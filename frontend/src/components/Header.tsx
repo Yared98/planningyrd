@@ -26,6 +26,8 @@ interface HeaderProps {
   onOpenExport: () => void;
   onSendReaction: (emoji: string) => void;
   onLeaveRoom: () => void;
+  theme?: 'dark' | 'light';
+  onToggleTheme?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -37,16 +39,23 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenExport,
   onSendReaction,
   onLeaveRoom,
+  theme: propTheme,
+  onToggleTheme,
 }) => {
   const { t, i18n } = useTranslation();
   const [copied, setCopied] = useState(false);
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [localTheme, setLocalTheme] = useState<'dark' | 'light'>('dark');
+  const theme = propTheme || localTheme;
   const [showReactions, setShowReactions] = useState(false);
 
   const toggleTheme = () => {
-    const next = theme === 'dark' ? 'light' : 'dark';
-    setTheme(next);
-    document.documentElement.setAttribute('data-theme', next);
+    if (onToggleTheme) {
+      onToggleTheme();
+    } else {
+      const next = localTheme === 'dark' ? 'light' : 'dark';
+      setLocalTheme(next);
+      document.documentElement.setAttribute('data-theme', next);
+    }
   };
 
   const toggleLanguage = () => {
