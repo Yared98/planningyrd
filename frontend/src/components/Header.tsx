@@ -82,7 +82,8 @@ export const Header: React.FC<HeaderProps> = ({
   const quickEmojis = ['🎉', '🚀', '🤔', '☕', '👍', '🔥', '❤️', '💯'];
 
   return (
-    <header className="app-header">
+    <>
+      <header className="app-header">
       <div className="header-left">
         <div className="brand-logo">
           <div className="brand-icon-box">
@@ -252,14 +253,15 @@ export const Header: React.FC<HeaderProps> = ({
           <LogOut size={16} />
         </button>
       </div>
-
-      {/* Modal MCP */}
-      <McpModal
-        isOpen={showMcpModal}
-        onClose={() => setShowMcpModal(false)}
-        roomId={room.id}
-        isFacilitator={me?.is_facilitator}
-      />
     </header>
-  );
+
+    {/* Modal MCP */}
+    <McpModal
+      isOpen={showMcpModal}
+      onClose={() => setShowMcpModal(false)}
+      roomId={room.id}
+      isFacilitator={me?.is_facilitator}
+    />
+  </>
+);
 };
