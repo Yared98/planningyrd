@@ -112,7 +112,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         alignItems: 'center',
         justifyContent: 'center',
         padding: '2rem 1rem',
-        background: 'radial-gradient(circle at 50% 20%, #151d32 0%, var(--bg-canvas) 80%)',
+        background: 'var(--bg-canvas-radial, radial-gradient(circle at 50% 20%, #151d32 0%, var(--bg-canvas) 80%))',
       }}
     >
       <div style={{ maxWidth: '480px', width: '100%', textAlign: 'center', marginBottom: '2rem' }}>
