@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import { EcosystemSwitcher } from './EcosystemSwitcher';
 import { McpModal } from './McpModal';
-import { GithubIcon } from './Footer';
 import { copyToClipboard } from '../utils/clipboard';
 import type { Participant, Room, Story } from '../types';
 
@@ -196,18 +195,6 @@ export const Header: React.FC<HeaderProps> = ({
         <button className="btn-icon" style={{ width: 32, height: 32 }} onClick={toggleTheme} title={t('nav.themeToggle')}>
           {theme === 'dark' ? <Sun size={15} color="#fbbf24" /> : <Moon size={15} color="var(--color-primary)" />}
         </button>
-
-        <a
-          href="https://github.com/Yared98/planningyrd"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn-icon"
-          style={{ width: 32, height: 32, textDecoration: 'none', color: 'inherit' }}
-          title={t('footer.github_title', 'Ver código-fonte do PlanningYrd no GitHub')}
-          aria-label="GitHub"
-        >
-          <GithubIcon size={15} />
-        </a>
 
         <button
           className="btn-icon"
