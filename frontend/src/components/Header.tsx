@@ -119,6 +119,27 @@ export const Header: React.FC<HeaderProps> = ({
             {copied ? <Check size={13} color="#10b981" /> : <Copy size={13} />}
           </button>
         </div>
+
+        {me?.is_facilitator && (
+          <span
+            style={{
+              fontSize: '0.625rem',
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+              padding: '0.1rem 0.4rem',
+              borderRadius: 'var(--radius-full)',
+              backgroundColor: 'rgba(99, 102, 241, 0.15)',
+              border: '1px solid var(--border-primary, rgba(99, 102, 241, 0.35))',
+              color: 'var(--color-primary)',
+              flexShrink: 0,
+              cursor: 'help',
+            }}
+            title={t('nav.facilitatorTooltip', 'Você é o Facilitador desta sessão')}
+          >
+            {t('nav.facilitator', 'FAC')}
+          </span>
+        )}
       </div>
 
       <div className="header-right" style={{ gap: '0.4rem' }}>

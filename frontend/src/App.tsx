@@ -51,7 +51,8 @@ export function App() {
   const [participantId] = useState<string>(() => {
     let pid = localStorage.getItem('planningyrd_participant_id');
     if (!pid) {
-      pid = `usr_${Math.random().toString(36).substring(2, 11)}`;
+      // crypto.randomUUID() para entropia criptográfica adequada
+      pid = `usr_${crypto.randomUUID().replace(/-/g, '').substring(0, 16)}`;
       localStorage.setItem('planningyrd_participant_id', pid);
     }
     return pid;

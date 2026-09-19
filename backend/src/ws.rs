@@ -68,6 +68,11 @@ async fn handle_socket(socket: WebSocket, room_id: String, state: AppState) {
     while let Some(Ok(msg)) = receiver.next().await {
         match msg {
             Message::Text(text) => {
+                // Limite de tamanho: previne DoS por mensagens gigantes
+                if text.len() > 65_536 {
+                    warn!("Mensagem WebSocket excessivamente grande descartada ({} bytes)", text.len());
+                    continue;
+                }
                 let parsed: Result<ClientMessage, _> = serde_json::from_str(&text);
                 match parsed {
                     Ok(client_msg) => {
@@ -405,6 +410,16 @@ async fn handle_client_message(
         }
 
         ClientMessage::RevealCards => {
+            // Apenas facilitador pode revelar as cartas
+            let p_id = match current_participant_id {
+                Some(ref id) => id.clone(),
+                None => return,
+            };
+            let is_fac = session.participants.get(&p_id).map(|p| p.is_facilitator).unwrap_or(false);
+            if !is_fac {
+                warn!("Participante {} tentou revelar cartas sem ser facilitador na sala {}", p_id, room_id);
+                return;
+            }
             let room_db = match state.db.get_room(room_id) {
                 Ok(Some(r)) => r,
                 _ => return,
@@ -413,6 +428,16 @@ async fn handle_client_message(
         }
 
         ClientMessage::ResetRound => {
+            // Apenas facilitador pode resetar a rodada
+            let p_id = match current_participant_id {
+                Some(ref id) => id.clone(),
+                None => return,
+            };
+            let is_fac = session.participants.get(&p_id).map(|p| p.is_facilitator).unwrap_or(false);
+            if !is_fac {
+                warn!("Participante {} tentou resetar rodada sem ser facilitador na sala {}", p_id, room_id);
+                return;
+            }
             let room_db = match state.db.get_room(room_id) {
                 Ok(Some(r)) => r,
                 _ => return,
@@ -519,6 +544,16 @@ async fn handle_client_message(
         }
 
         ClientMessage::SelectStory { story_id } => {
+            // Apenas facilitador pode alterar a história ativa
+            let p_id = match current_participant_id {
+                Some(ref id) => id.clone(),
+                None => return,
+            };
+            let is_fac = session.participants.get(&p_id).map(|p| p.is_facilitator).unwrap_or(false);
+            if !is_fac {
+                warn!("Participante {} tentou alterar história sem ser facilitador na sala {}", p_id, room_id);
+                return;
+            }
             let _ = state
                 .db
                 .update_room_current_story(room_id, Some(&story_id));
@@ -556,6 +591,16 @@ async fn handle_client_message(
         }
 
         ClientMessage::SaveStoryScore { story_id, score } => {
+            // Apenas facilitador pode salvar pontuação final
+            let p_id = match current_participant_id {
+                Some(ref id) => id.clone(),
+                None => return,
+            };
+            let is_fac = session.participants.get(&p_id).map(|p| p.is_facilitator).unwrap_or(false);
+            if !is_fac {
+                warn!("Participante {} tentou salvar pontuação sem ser facilitador na sala {}", p_id, room_id);
+                return;
+            }
             let score = if score.chars().count() > 20 {
                 score.chars().take(20).collect()
             } else {
@@ -611,6 +656,16 @@ async fn handle_client_message(
             deck_type,
             custom_cards,
         } => {
+            // Apenas facilitador pode trocar o baralho
+            let p_id = match current_participant_id {
+                Some(ref id) => id.clone(),
+                None => return,
+            };
+            let is_fac = session.participants.get(&p_id).map(|p| p.is_facilitator).unwrap_or(false);
+            if !is_fac {
+                warn!("Participante {} tentou trocar baralho sem ser facilitador na sala {}", p_id, room_id);
+                return;
+            }
             let custom_json = custom_cards
                 .as_ref()
                 .and_then(|cards| serde_json::to_string(cards).ok());
@@ -635,6 +690,16 @@ async fn handle_client_message(
             action,
             duration_seconds,
         } => {
+            // Apenas facilitador pode controlar o timer
+            let p_id = match current_participant_id {
+                Some(ref id) => id.clone(),
+                None => return,
+            };
+            let is_fac = session.participants.get(&p_id).map(|p| p.is_facilitator).unwrap_or(false);
+            if !is_fac {
+                warn!("Participante {} tentou controlar timer sem ser facilitador na sala {}", p_id, room_id);
+                return;
+            }
             let dur = duration_seconds.unwrap_or(120);
             let now = SystemTime::now()
                 .duration_since(UNIX_EPOCH)

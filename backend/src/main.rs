@@ -69,14 +69,38 @@ async fn client_config_handler() -> Json<ClientConfigResponse> {
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "backend=info,tower_http=info".into()),
+        )
+        .init();
 
-    let db_path = std::env::var("DATABASE_PATH").unwrap_or_else(|_| "planningyrd.db".to_string());
+    // Compatibilidade com DATABASE_URL (padrão da suíte) e DATABASE_PATH legada
+    let db_path = std::env::var("DATABASE_URL")
+        .or_else(|_| std::env::var("DATABASE_PATH"))
+        .unwrap_or_else(|_| {
+            if std::path::Path::new("planningyrd.db").exists() {
+                "planningyrd.db".to_string()
+            } else {
+                std::fs::create_dir_all("data").ok();
+                "data/planning.db".to_string()
+            }
+        });
+
+    if let Some(parent) = std::path::Path::new(&db_path).parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent).ok();
+        }
+    }
+
     let db = Database::new(&db_path).expect("Failed to initialize SQLite database");
     let state = AppState::new(db);
 
     // Rotina periódica de auto-purge para higienização de salas antigas (Padrão: 60 dias)
-    let retention_days: i64 = std::env::var("ROOM_RETENTION_DAYS")
+    // Aceita RETENTION_DAYS unificada ou ROOM_RETENTION_DAYS específica
+    let retention_days: i64 = std::env::var("RETENTION_DAYS")
+        .or_else(|_| std::env::var("ROOM_RETENTION_DAYS"))
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(60);
@@ -113,6 +137,7 @@ async fn main() {
         .route("/rooms/{id}/export", get(export_room_handler));
 
     let mut app = Router::new()
+        .route("/health", get(health_check))
         .nest("/api", api_routes)
         .route("/mcp", post(mcp::handle_mcp_request))
         .route("/robots.txt", get(robots_txt_handler))
@@ -122,12 +147,11 @@ async fn main() {
         .with_state(state);
 
     // Serve frontend build if frontend/dist exists
-    let frontend_dist = PathBuf::from("frontend/dist");
-    let dist_path = if frontend_dist.exists() {
-        frontend_dist
-    } else {
-        PathBuf::from("../frontend/dist")
-    };
+    let static_dir = std::env::var("STATIC_DIR").unwrap_or_else(|_| "frontend/dist".to_string());
+    let mut dist_path = PathBuf::from(&static_dir);
+    if !dist_path.exists() {
+        dist_path = PathBuf::from("../frontend/dist");
+    }
 
     if dist_path.exists() {
         info!("Serving static frontend files from {:?}", dist_path);
@@ -142,7 +166,9 @@ async fn main() {
         .unwrap_or(3000);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
-    info!("PlanningYrd server listening on http://{}", addr);
+    info!("🚀 PlanningYrd backend rodando em http://{}", addr);
+    info!("🔗 WebSocket disponível em ws://{}/ws/rooms/{{id}}", addr);
+    info!("🤖 Servidor MCP disponível em http://{}/mcp", addr);
 
     let listener = tokio::net::TcpListener::bind(addr)
         .await
@@ -151,6 +177,10 @@ async fn main() {
     axum::serve(listener, app)
         .await
         .expect("Axum server crashed");
+}
+
+async fn health_check() -> &'static str {
+    "OK"
 }
 
 async fn robots_txt_handler() -> impl IntoResponse {

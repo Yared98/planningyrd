@@ -19,6 +19,8 @@ const resources = {
         leaveRoom: 'Sair da Sala',
         code: 'Código',
         activeStory: 'História em Foco',
+        facilitator: 'FAC',
+        facilitatorTooltip: 'Você é o Facilitador desta sessão',
       },
       lobby: {
         createRoomTab: 'Criar Nova Sala',
@@ -178,6 +180,8 @@ const resources = {
         leaveRoom: 'Leave Room',
         code: 'Code',
         activeStory: 'Focus Story',
+        facilitator: 'FAC',
+        facilitatorTooltip: 'You are the Facilitator of this session',
       },
       lobby: {
         createRoomTab: 'Create New Room',
