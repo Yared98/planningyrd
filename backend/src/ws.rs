@@ -25,6 +25,7 @@ pub async fn ws_handler(
 }
 
 async fn handle_socket(socket: WebSocket, room_id: String, state: AppState) {
+    let connection_id = Ulid::new().to_string();
     let (mut sender, mut receiver) = socket.split();
     let session = state.get_or_create_room_session(&room_id);
     let mut rx = session.tx.subscribe();
@@ -83,6 +84,7 @@ async fn handle_socket(socket: WebSocket, room_id: String, state: AppState) {
                             &session,
                             &direct_tx,
                             &mut current_participant_id,
+                            &connection_id,
                         )
                         .await;
                     }
@@ -99,27 +101,38 @@ async fn handle_socket(socket: WebSocket, room_id: String, state: AppState) {
 
     send_task.abort();
 
-    // Handle participant disconnect
+    // Handle participant disconnect safely using connection_id
     if let Some(p_id) = current_participant_id {
-        info!("Participant {} disconnected from room {}", p_id, room_id);
-        session.participants.remove(&p_id);
+        let is_latest = session
+            .participant_connections
+            .get(&p_id)
+            .map(|val| *val == connection_id)
+            .unwrap_or(false);
 
-        let active_participants: Vec<Participant> = session
-            .participants
-            .iter()
-            .map(|p| p.value().clone())
-            .collect();
+        if is_latest {
+            info!("Participant {} disconnected from room {}", p_id, room_id);
+            session.participant_connections.remove(&p_id);
+            session.participants.remove(&p_id);
 
-        if active_participants.is_empty() {
-            state.remove_room_if_empty(&room_id);
-            info!("Room {} memory session cleaned up (no remaining participants)", room_id);
+            let active_participants: Vec<Participant> = session
+                .participants
+                .iter()
+                .map(|p| p.value().clone())
+                .collect();
+
+            if active_participants.is_empty() {
+                state.remove_room_if_empty(&room_id);
+                info!("Room {} memory session cleaned up (no remaining participants)", room_id);
+            } else {
+                state.broadcast_to_room(
+                    &room_id,
+                    ServerMessage::PresenceUpdated {
+                        participants: active_participants,
+                    },
+                );
+            }
         } else {
-            state.broadcast_to_room(
-                &room_id,
-                ServerMessage::PresenceUpdated {
-                    participants: active_participants,
-                },
-            );
+            info!("Ignored disconnect cleanup for participant {} because a newer connection is active", p_id);
         }
     }
 }
@@ -131,6 +144,7 @@ async fn handle_client_message(
     session: &crate::state::RoomSession,
     direct_tx: &tokio::sync::mpsc::Sender<ServerMessage>,
     current_participant_id: &mut Option<String>,
+    connection_id: &str,
 ) {
     match msg {
         ClientMessage::Join {
@@ -141,6 +155,9 @@ async fn handle_client_message(
             facilitator_token,
         } => {
             *current_participant_id = Some(participant_id.clone());
+            session
+                .participant_connections
+                .insert(participant_id.clone(), connection_id.to_string());
 
             let name = name.trim();
             let name = if name.is_empty() {

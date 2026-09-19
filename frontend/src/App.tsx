@@ -58,8 +58,8 @@ export function App() {
     return pid;
   });
 
-  const [userName, setUserName] = useState<string>('');
-  const [userAvatar, setUserAvatar] = useState<string>('🦊');
+  const [userName, setUserName] = useState<string>(() => localStorage.getItem('planningyrd_nickname') || '');
+  const [userAvatar, setUserAvatar] = useState<string>(() => localStorage.getItem('planningyrd_avatar') || '🦊');
   const [userRole, setUserRole] = useState<ParticipantRole>('estimator');
   const [facilitatorToken, setFacilitatorToken] = useState<string | null>(null);
 
@@ -74,11 +74,14 @@ export function App() {
     role: ParticipantRole,
     token?: string
   ) => {
+    const resolvedToken = token || localStorage.getItem(`facilitator_${roomId}`) || null;
     setActiveRoomId(roomId);
     setUserName(name);
     setUserAvatar(avatar);
     setUserRole(role);
-    if (token) setFacilitatorToken(token);
+    setFacilitatorToken(resolvedToken);
+    localStorage.setItem('planningyrd_nickname', name);
+    localStorage.setItem('planningyrd_avatar', avatar);
 
     // Update URL without full refresh
     const newUrl = `${window.location.pathname}?room=${roomId}`;

@@ -224,6 +224,7 @@ pub enum ClientMessage {
         name: String,
         avatar: String,
         role: String,
+        #[serde(default)]
         facilitator_token: Option<String>,
     },
     Vote {
@@ -234,6 +235,7 @@ pub enum ClientMessage {
     ResetRound,
     AddStory {
         title: String,
+        #[serde(default)]
         description: Option<String>,
     },
     SelectStory {
@@ -245,10 +247,12 @@ pub enum ClientMessage {
     },
     ChangeDeck {
         deck_type: String,
+        #[serde(default)]
         custom_cards: Option<Vec<String>>,
     },
     TimerAction {
         action: String,
+        #[serde(default)]
         duration_seconds: Option<i64>,
     },
     Reaction {

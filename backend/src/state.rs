@@ -11,6 +11,7 @@ pub struct RoomSession {
     pub room_id: String,
     pub tx: broadcast::Sender<ServerMessage>,
     pub participants: Arc<DashMap<String, Participant>>,
+    pub participant_connections: Arc<DashMap<String, String>>,
 }
 
 #[derive(Clone)]
@@ -36,6 +37,7 @@ impl AppState {
                 room_id: room_id.to_string(),
                 tx,
                 participants: Arc::new(DashMap::new()),
+                participant_connections: Arc::new(DashMap::new()),
             };
             self.rooms.insert(room_id.to_string(), session.clone());
             session

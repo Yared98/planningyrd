@@ -267,7 +267,11 @@ export function usePlanningSocket({
 
   const addStory = useCallback(
     (title: string, description?: string) => {
-      sendMessage({ type: 'add_story', title, description });
+      sendMessage({
+        type: 'add_story',
+        title: title.trim(),
+        description: description?.trim() || null,
+      });
     },
     [sendMessage]
   );

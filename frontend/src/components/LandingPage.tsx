@@ -58,14 +58,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [creatorNickname, setCreatorNickname] = useState(
     localStorage.getItem('planningyrd_nickname') || ''
   );
-  const [createAvatar, setCreateAvatar] = useState('🦊');
+  const [createAvatar, setCreateAvatar] = useState(
+    () => localStorage.getItem('planningyrd_avatar') || '🦊'
+  );
 
   // Form states for Join
   const [joinRoomId, setJoinRoomId] = useState(initialRoomId || '');
   const [joinNickname, setJoinNickname] = useState(
     localStorage.getItem('planningyrd_nickname') || ''
   );
-  const [joinAvatar, setJoinAvatar] = useState('🐺');
+  const [joinAvatar, setJoinAvatar] = useState(
+    () => localStorage.getItem('planningyrd_avatar') || '🐺'
+  );
   const [joinRole, setJoinRole] = useState<ParticipantRole>('estimator');
 
   const [isLoading, setIsLoading] = useState(false);
@@ -99,6 +103,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
       const data = await res.json();
       localStorage.setItem('planningyrd_nickname', creatorNickname.trim());
+      localStorage.setItem('planningyrd_avatar', createAvatar);
       localStorage.setItem(`facilitator_${data.id}`, data.facilitator_token);
 
       saveRecentRoom({
@@ -128,6 +133,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     if (!joinRoomId.trim() || !joinNickname.trim()) return;
 
     localStorage.setItem('planningyrd_nickname', joinNickname.trim());
+    localStorage.setItem('planningyrd_avatar', joinAvatar);
     const storedToken = localStorage.getItem(`facilitator_${joinRoomId.trim()}`);
 
     saveRecentRoom({
@@ -149,13 +155,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   const handleDirectJoin = (room: RecentRoom) => {
     const nick = (creatorNickname || joinNickname || localStorage.getItem('planningyrd_nickname') || '').trim() || 'Participante';
-    const avatar = createAvatar || joinAvatar || '🦊';
+    const avatar = createAvatar || joinAvatar || localStorage.getItem('planningyrd_avatar') || '🦊';
+    const token = room.facilitatorToken || localStorage.getItem(`facilitator_${room.id}`) || undefined;
     onJoinRoom(
       room.id,
       nick,
       avatar,
       room.role === 'spectator' ? 'spectator' : 'estimator',
-      room.facilitatorToken || undefined
+      token
     );
   };
 
