@@ -3,6 +3,7 @@
 use rusqlite::{params, Connection, Result};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use std::time::{SystemTime, UNIX_EPOCH};
 use crate::models::{ConsensusStats, Room, RoomStatus, Story, StoryStatus, VoteRecord};
 
 #[derive(Clone)]
@@ -140,6 +141,20 @@ impl Database {
         } else {
             Ok(None)
         }
+    }
+
+    pub fn cleanup_expired_rooms(&self, retention_days: i64) -> Result<usize> {
+        let conn = self.get_conn();
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as i64;
+        let cutoff_ms = now - (retention_days * 24 * 3600 * 1000);
+        let count = conn.execute(
+            "DELETE FROM rooms WHERE created_at < ?1",
+            params![cutoff_ms],
+        )?;
+        Ok(count)
     }
 
     pub fn update_room_status(&self, id: &str, status: RoomStatus) -> Result<()> {
@@ -661,6 +676,74 @@ mod tests {
         assert!(db.create_room(&room).is_ok());
         let fetched = db.get_room("poison_test_room").unwrap();
         assert!(fetched.is_some());
+    }
+
+    #[test]
+    fn test_cleanup_expired_rooms() {
+        let db = Database::new(":memory:").expect("Failed to create in-memory db");
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as i64;
+
+        // Old room created 70 days ago
+        let old_created_at = now - (70 * 24 * 3600 * 1000);
+        let old_room = Room {
+            id: "old_room".into(),
+            name: "Old Sprint Poker".into(),
+            deck_type: "fibonacci".into(),
+            custom_deck: None,
+            facilitator_token: "tok_old".into(),
+            status: RoomStatus::Voting,
+            auto_reveal: false,
+            show_average: true,
+            current_story_id: None,
+            timer_seconds_remaining: 0,
+            timer_is_running: false,
+            timer_ends_at: None,
+            created_at: old_created_at,
+        };
+        db.create_room(&old_room).unwrap();
+
+        // Story in old room
+        let story = Story {
+            id: "story_old".into(),
+            room_id: "old_room".into(),
+            title: "Old Story".into(),
+            description: "".into(),
+            order_index: 0,
+            final_score: None,
+            status: StoryStatus::Pending,
+            created_at: old_created_at,
+            estimated_at: None,
+        };
+        db.add_story(&story).unwrap();
+
+        // Fresh room created today
+        let fresh_room = Room {
+            id: "fresh_room".into(),
+            name: "Fresh Sprint Poker".into(),
+            deck_type: "fibonacci".into(),
+            custom_deck: None,
+            facilitator_token: "tok_fresh".into(),
+            status: RoomStatus::Voting,
+            auto_reveal: false,
+            show_average: true,
+            current_story_id: None,
+            timer_seconds_remaining: 0,
+            timer_is_running: false,
+            timer_ends_at: None,
+            created_at: now,
+        };
+        db.create_room(&fresh_room).unwrap();
+
+        // Run cleanup with 60 days
+        let purged = db.cleanup_expired_rooms(60).unwrap();
+        assert_eq!(purged, 1);
+
+        // old_room and its story should be gone via CASCADE
+        assert!(db.get_room("old_room").unwrap().is_none());
+        assert!(db.get_stories("old_room").unwrap().is_empty());
+
+        // fresh_room should remain
+        assert!(db.get_room("fresh_room").unwrap().is_some());
     }
 }
 

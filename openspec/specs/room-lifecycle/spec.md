@@ -25,3 +25,9 @@ Definir a criação de salas, geração de links/códigos únicos, persistência
 - **Given** o Facilitador que deseja limitar o tempo de discussão
 - **When** ele inicia o cronômetro (ex: 60s, 120s, 180s, 300s)
 - **Then** o estado do timer é transmitido em tempo real via WebSocket para todos os clientes com sincronização de fim (`ends_at`).
+
+### 5. Política de Retenção de Dados e Auto-Purge
+- **Given** salas inativas criadas há mais de N dias
+- **When** o servidor inicializa ou no ciclo de 24 horas via rotina em segundo plano
+- **Then** o sistema remove as salas expiradas via `DELETE FROM rooms WHERE created_at < cutoff` com deleção em cascata (`ON DELETE CASCADE`) para histórias do backlog e votos.
+- **And** o tempo de guarda padrão é de 60 dias, configurável via variável de ambiente `ROOM_RETENTION_DAYS`.

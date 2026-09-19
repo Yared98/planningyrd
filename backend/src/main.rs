@@ -75,6 +75,35 @@ async fn main() {
     let db = Database::new(&db_path).expect("Failed to initialize SQLite database");
     let state = AppState::new(db);
 
+    // Rotina periódica de auto-purge para higienização de salas antigas (Padrão: 60 dias)
+    let retention_days: i64 = std::env::var("ROOM_RETENTION_DAYS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(60);
+
+    let cleanup_state = state.clone();
+    tokio::spawn(async move {
+        // Checar na inicialização e a cada 24 horas
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(24 * 3600));
+        loop {
+            interval.tick().await;
+            match cleanup_state.db.cleanup_expired_rooms(retention_days) {
+                Ok(count) if count > 0 => {
+                    tracing::info!(
+                        purged_rooms = count,
+                        retention_days = retention_days,
+                        "Auto-purge: salas com mais de {} dias removidas com sucesso",
+                        retention_days
+                    );
+                }
+                Ok(_) => {}
+                Err(e) => {
+                    tracing::warn!(error = %e, "Erro ao executar rotina de auto-purge de salas no PlanningYrd");
+                }
+            }
+        }
+    });
+
     let cors = CorsLayer::permissive();
 
     let api_routes = Router::new()

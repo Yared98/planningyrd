@@ -42,6 +42,7 @@ COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist
 ENV PORT=3000
 ENV DATABASE_PATH=/app/data/planningyrd.db
 ENV RUST_LOG=info,tower_http=info
+ENV ROOM_RETENTION_DAYS=60
 
 EXPOSE 3000
 
