@@ -17,6 +17,7 @@ import {
 import { EcosystemSwitcher } from './EcosystemSwitcher';
 import { McpModal } from './McpModal';
 import { GithubIcon } from './Footer';
+import { copyToClipboard } from '../utils/clipboard';
 import type { Participant, Room, Story } from '../types';
 
 interface HeaderProps {
@@ -66,11 +67,13 @@ export const Header: React.FC<HeaderProps> = ({
     i18n.changeLanguage(next);
   };
 
-  const handleCopyLink = () => {
+  const handleCopyLink = async () => {
     const url = window.location.origin + window.location.pathname + `?room=${room.id}`;
-    navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const success = await copyToClipboard(url);
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const formatTimer = (seconds: number) => {

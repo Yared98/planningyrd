@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Bot, Copy, Check, Terminal, Shield, Key, Sparkles, BookOpen, Activity } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { copyToClipboard } from '../utils/clipboard';
 
 interface McpModalProps {
   isOpen: boolean;
@@ -50,13 +51,11 @@ export const McpModal: React.FC<McpModalProps> = ({
     2
   );
 
-  const copyToClipboard = (text: string, setCopiedState: (v: boolean) => void) => {
-    try {
-      navigator.clipboard.writeText(text);
+  const copyWithFeedback = async (text: string, setCopiedState: (v: boolean) => void) => {
+    const success = await copyToClipboard(text);
+    if (success) {
       setCopiedState(true);
       setTimeout(() => setCopiedState(false), 2000);
-    } catch {
-      // Fallback
     }
   };
 
@@ -435,7 +434,7 @@ export const McpModal: React.FC<McpModalProps> = ({
                     }}
                   />
                   <button
-                    onClick={() => copyToClipboard(mcpServerUrl, setCopiedUrl)}
+                    onClick={() => copyWithFeedback(mcpServerUrl, setCopiedUrl)}
                     className="btn-secondary"
                     style={{
                       display: 'inline-flex',
@@ -477,7 +476,7 @@ export const McpModal: React.FC<McpModalProps> = ({
                       title="Backlog de histórias e estimativas"
                     />
                     <button
-                      onClick={() => copyToClipboard(backlogUri, setCopiedBacklogUri)}
+                      onClick={() => copyWithFeedback(backlogUri, setCopiedBacklogUri)}
                       className="btn-secondary"
                       style={{
                         display: 'inline-flex',
@@ -512,7 +511,7 @@ export const McpModal: React.FC<McpModalProps> = ({
                       title="Estatísticas de consenso e distribuição de votos"
                     />
                     <button
-                      onClick={() => copyToClipboard(consensusUri, setCopiedConsensusUri)}
+                      onClick={() => copyWithFeedback(consensusUri, setCopiedConsensusUri)}
                       className="btn-secondary"
                       style={{
                         display: 'inline-flex',
@@ -539,7 +538,7 @@ export const McpModal: React.FC<McpModalProps> = ({
                     {t('mcp.json_config_label', '3. Configuração JSON (Claude Desktop / Cursor)')}
                   </span>
                   <button
-                    onClick={() => copyToClipboard(jsonConfigSnippet, setCopiedConfig)}
+                    onClick={() => copyWithFeedback(jsonConfigSnippet, setCopiedConfig)}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',

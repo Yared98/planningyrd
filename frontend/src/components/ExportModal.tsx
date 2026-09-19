@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Copy, Check, Download } from 'lucide-react';
+import { copyToClipboard } from '../utils/clipboard';
 import type { Room, Story } from '../types';
 
 interface ExportModalProps {
@@ -53,10 +54,12 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
   const content = generateContent();
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(content);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async () => {
+    const success = await copyToClipboard(content);
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const handleDownload = () => {

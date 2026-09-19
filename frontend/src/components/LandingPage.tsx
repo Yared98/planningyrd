@@ -23,6 +23,7 @@ import { McpModal } from './McpModal';
 import { Footer, GithubIcon } from './Footer';
 import type { ParticipantRole } from '../types';
 import { getRecentRooms, removeRecentRoom, saveRecentRoom, type RecentRoom } from '../utils/recentRooms';
+import { copyToClipboard } from '../utils/clipboard';
 
 interface LandingPageProps {
   initialRoomId?: string | null;
@@ -166,11 +167,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     );
   };
 
-  const handleCopyInvite = (roomId: string) => {
+  const handleCopyInvite = async (roomId: string) => {
     const url = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
-    navigator.clipboard.writeText(url);
-    setCopiedRoomId(roomId);
-    setTimeout(() => setCopiedRoomId(null), 2000);
+    const success = await copyToClipboard(url);
+    if (success) {
+      setCopiedRoomId(roomId);
+      setTimeout(() => setCopiedRoomId(null), 2000);
+    }
   };
 
   const handleRemoveRoom = (id: string) => {
