@@ -38,11 +38,11 @@ export const FacilitatorControls: React.FC<FacilitatorControlsProps> = ({
   return (
     <div
       style={{
-        position: 'fixed',
-        bottom: '120px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 40,
+        display: 'flex',
+        justifyContent: 'center',
+        padding: '0.4rem 1rem',
+        width: '100%',
+        zIndex: 35,
       }}
     >
       <div className="facilitator-bar">

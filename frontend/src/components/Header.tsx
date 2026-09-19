@@ -83,8 +83,8 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <>
-      <header className="app-header">
-      <div className="header-left">
+    <header className="app-header">
+      <div className="header-left" style={{ gap: '0.65rem' }}>
         <a
           href="/"
           onClick={(e) => {
@@ -108,97 +108,46 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="room-title-badge">
           <span style={{ color: 'var(--text-muted)' }}>{t('nav.code')}:</span>
           <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-primary)' }}>
-            {room.id.substring(0, 8)}...
+            {room.id.substring(0, 6)}...
           </span>
           <button
             onClick={handleCopyLink}
             className="btn-icon"
-            style={{ width: 26, height: 26 }}
+            style={{ width: 24, height: 24, padding: 0 }}
             title={t('nav.copyLink')}
           >
-            {copied ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
+            {copied ? <Check size={13} color="#10b981" /> : <Copy size={13} />}
           </button>
         </div>
-
-        {currentStory && (
-          <div
-            className="room-title-badge"
-            style={{ background: 'var(--color-primary-subtle)', borderColor: 'var(--border-primary)' }}
-          >
-            <span style={{ color: 'var(--color-primary)' }}>📌 {currentStory.title}</span>
-          </div>
-        )}
       </div>
 
-      <div className="header-right">
-        {timer.isRunning && (
-          <div className="timer-pill running">
-            <Clock size={15} />
-            <span>{formatTimer(timer.secondsRemaining)}</span>
+      <div className="header-right" style={{ gap: '0.4rem' }}>
+        {me && (
+          <div
+            className="header-btn-text"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              padding: '2px 8px',
+              borderRadius: 'var(--radius-full)',
+              background: 'var(--bg-subtle)',
+              border: '1px solid var(--border-subtle)',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+            }}
+          >
+            <span>{me.avatar}</span>
+            <span>{me.name}</span>
           </div>
         )}
-
-        {/* Reaction trigger */}
-        <div style={{ position: 'relative' }}>
-          <button
-            className="btn-icon"
-            onClick={() => setShowReactions(!showReactions)}
-            title="Enviar Reação"
-          >
-            <Smile size={18} />
-          </button>
-
-          {showReactions && (
-            <div
-              style={{
-                position: 'absolute',
-                top: 45,
-                right: 0,
-                background: 'var(--bg-surface-elevated)',
-                border: '1px solid var(--border-highlight)',
-                borderRadius: 'var(--radius-xl)',
-                padding: '0.5rem',
-                display: 'flex',
-                gap: '0.4rem',
-                boxShadow: 'var(--shadow-lg)',
-                zIndex: 60,
-              }}
-            >
-              {quickEmojis.map((emoji) => (
-                <button
-                  key={emoji}
-                  onClick={() => {
-                    onSendReaction(emoji);
-                    setShowReactions(false);
-                  }}
-                  style={{
-                    fontSize: '1.25rem',
-                    padding: '4px',
-                    borderRadius: 'var(--radius-sm)',
-                    background: 'var(--bg-subtle)',
-                  }}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <button className="btn-icon" onClick={onOpenBacklog} title={t('backlog.drawerTitle')}>
-          <ListTodo size={18} />
-        </button>
-
-        <button className="btn-icon" onClick={onOpenExport} title={t('nav.export')}>
-          <FileSpreadsheet size={18} />
-        </button>
 
         {/* Botão MCP Padronizado */}
         <button
           onClick={() => setShowMcpModal(true)}
           className="btn-secondary"
           style={{
-            padding: '0.35rem 0.65rem',
+            padding: '0.35rem 0.6rem',
             borderRadius: 'var(--radius-full)',
             fontSize: '0.75rem',
             fontWeight: 700,
@@ -216,55 +165,125 @@ export const Header: React.FC<HeaderProps> = ({
           <span>MCP</span>
         </button>
 
-        <button className="btn-icon" onClick={toggleLanguage} title={t('nav.language')}>
-          <Globe size={18} />
+        <button className="btn-icon" style={{ width: 32, height: 32 }} onClick={toggleLanguage} title={t('nav.language')}>
+          <Globe size={15} />
         </button>
 
-        <button className="btn-icon" onClick={toggleTheme} title={t('nav.themeToggle')}>
-          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+        <button className="btn-icon" style={{ width: 32, height: 32 }} onClick={toggleTheme} title={t('nav.themeToggle')}>
+          {theme === 'dark' ? <Sun size={15} color="#fbbf24" /> : <Moon size={15} color="var(--color-primary)" />}
         </button>
-
-        {me && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              padding: '2px 8px',
-              borderRadius: 'var(--radius-full)',
-              background: 'var(--bg-subtle)',
-              border: '1px solid var(--border-subtle)',
-              fontSize: '0.8125rem',
-              fontWeight: 600,
-            }}
-          >
-            <span>{me.avatar}</span>
-            <span>{me.name}</span>
-          </div>
-        )}
 
         <a
           href="https://github.com/Yared98/planningyrd"
           target="_blank"
           rel="noopener noreferrer"
           className="btn-icon"
-          style={{ textDecoration: 'none', color: 'inherit' }}
+          style={{ width: 32, height: 32, textDecoration: 'none', color: 'inherit' }}
           title={t('footer.github_title', 'Ver código-fonte do PlanningYrd no GitHub')}
           aria-label="GitHub"
         >
-          <GithubIcon size={16} />
+          <GithubIcon size={15} />
         </a>
 
         <button
           className="btn-icon"
           onClick={onLeaveRoom}
           title={t('nav.leaveRoom')}
-          style={{ color: 'var(--color-danger)' }}
+          style={{ width: 32, height: 32, color: 'var(--color-danger)' }}
         >
-          <LogOut size={16} />
+          <LogOut size={15} />
         </button>
       </div>
     </header>
+
+    {/* In-Session Sub-Header for Active Story, Timer & Poker Tools */}
+    <div className="session-sub-header">
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+        <div
+          className="room-title-badge"
+          style={{
+            background: currentStory ? 'var(--color-primary-subtle)' : 'var(--bg-subtle)',
+            borderColor: currentStory ? 'var(--border-primary)' : 'var(--border-subtle)',
+            maxWidth: '240px',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            fontSize: '0.78rem',
+            padding: '0.25rem 0.65rem',
+          }}
+          title={currentStory ? currentStory.title : undefined}
+        >
+          <span style={{ color: currentStory ? 'var(--color-primary)' : 'var(--text-muted)' }}>
+            {currentStory ? `📌 ${currentStory.title}` : 'Sem história selecionada'}
+          </span>
+        </div>
+
+        {timer.isRunning && (
+          <div className="timer-pill running" style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}>
+            <Clock size={13} />
+            <span>{formatTimer(timer.secondsRemaining)}</span>
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+        {/* Reaction trigger */}
+        <div style={{ position: 'relative' }}>
+          <button
+            className="btn-icon"
+            style={{ width: 30, height: 30 }}
+            onClick={() => setShowReactions(!showReactions)}
+            title="Enviar Reação"
+          >
+            <Smile size={16} />
+          </button>
+
+          {showReactions && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 38,
+                right: 0,
+                background: 'var(--bg-surface-elevated)',
+                border: '1px solid var(--border-highlight)',
+                borderRadius: 'var(--radius-xl)',
+                padding: '0.4rem',
+                display: 'flex',
+                gap: '0.35rem',
+                boxShadow: 'var(--shadow-lg)',
+                zIndex: 60,
+              }}
+            >
+              {quickEmojis.map((emoji) => (
+                <button
+                  key={emoji}
+                  onClick={() => {
+                    onSendReaction(emoji);
+                    setShowReactions(false);
+                  }}
+                  style={{
+                    fontSize: '1.15rem',
+                    padding: '3px',
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'var(--bg-subtle)',
+                  }}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <button className="btn-icon" style={{ width: 30, height: 30 }} onClick={onOpenBacklog} title={t('backlog.drawerTitle')}>
+          <ListTodo size={16} />
+        </button>
+
+        <button className="btn-icon" style={{ width: 30, height: 30 }} onClick={onOpenExport} title={t('nav.export')}>
+          <FileSpreadsheet size={16} />
+        </button>
+      </div>
+    </div>
 
     {/* Modal MCP */}
     <McpModal
