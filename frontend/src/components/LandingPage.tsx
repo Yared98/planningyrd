@@ -185,84 +185,59 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         minHeight: '100vh',
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '2rem 1rem',
         background: 'transparent',
         position: 'relative',
+        transition: 'background var(--transition-smooth)',
       }}
     >
-      {/* Top Bar Controls — EcosystemSwitcher + Language + Theme + GitHub */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '1.25rem',
-          right: '1.5rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.6rem',
-          zIndex: 10,
-        }}
-      >
-        <EcosystemSwitcher currentApp="planning" />
+      {/* Top Menu Bar Padronizado */}
+      <header className="app-header">
+        <div className="header-left">
+          <a href="/" className="brand-logo" title="PlanningYrd - Início" aria-label="PlanningYrd Home">
+            <div className="brand-icon-box">
+              <Layers size={18} />
+            </div>
+            <span className="brand-title">
+              Planning<span style={{ color: 'var(--color-primary)' }}>Yrd</span>
+            </span>
+          </a>
+          <EcosystemSwitcher currentApp="planning" />
+        </div>
 
-        {/* Botão MCP Padronizado */}
-        <button
-          onClick={() => setShowMcpModal(true)}
-          className="btn-secondary"
-          style={{
-            padding: '0.35rem 0.65rem',
-            borderRadius: 'var(--radius-full)',
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.35rem',
-            background: 'var(--color-primary-subtle, rgba(99, 102, 241, 0.15))',
-            border: '1px solid var(--border-primary, rgba(99, 102, 241, 0.35))',
-            color: 'var(--color-primary)',
-            cursor: 'pointer',
-            transition: 'all var(--transition-fast, 0.15s ease)',
-          }}
-          title={t('mcp.button_title', 'Configurar Servidor MCP (IA)')}
-        >
-          <Bot size={13} />
-          <span>MCP</span>
-        </button>
-
-        {/* Alternador de Idioma */}
-        <button
-          onClick={toggleLanguage}
-          className="btn-secondary"
-          style={{
-            padding: '0.35rem 0.65rem',
-            borderRadius: 'var(--radius-full)',
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.35rem',
-            background: 'var(--bg-subtle)',
-            border: '1px solid var(--border-subtle)',
-            color: 'var(--text-main)',
-            cursor: 'pointer',
-          }}
-          title={t('app.languageToggle', 'Alternar idioma')}
-        >
-          <Globe size={13} />
-          <span>{i18n.language.startsWith('en') ? 'EN' : 'PT'}</span>
-        </button>
-
-        {/* Alternador de Tema */}
-        {onToggleTheme && (
+        <div className="header-right">
+          {/* Botão MCP Padronizado */}
           <button
-            onClick={onToggleTheme}
+            onClick={() => setShowMcpModal(true)}
             className="btn-secondary"
             style={{
               padding: '0.35rem 0.65rem',
               borderRadius: 'var(--radius-full)',
               fontSize: '0.75rem',
-              fontWeight: 600,
+              fontWeight: 700,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              background: 'var(--color-primary-subtle, rgba(99, 102, 241, 0.15))',
+              border: '1px solid var(--border-primary, rgba(99, 102, 241, 0.35))',
+              color: 'var(--color-primary)',
+              cursor: 'pointer',
+              transition: 'all var(--transition-fast, 0.15s ease)',
+            }}
+            title={t('mcp.button_title', 'Configurar Servidor MCP (IA)')}
+          >
+            <Bot size={13} />
+            <span>MCP</span>
+          </button>
+
+          {/* Alternador de Idioma */}
+          <button
+            onClick={toggleLanguage}
+            className="btn-secondary"
+            style={{
+              padding: '0.35rem 0.65rem',
+              borderRadius: 'var(--radius-full)',
+              fontSize: '0.75rem',
+              fontWeight: 700,
               display: 'inline-flex',
               alignItems: 'center',
               gap: '0.35rem',
@@ -271,43 +246,76 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               color: 'var(--text-main)',
               cursor: 'pointer',
             }}
-            title={theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
+            title={t('app.languageToggle', 'Alternar idioma')}
           >
-            {theme === 'dark' ? <Sun size={14} color="#fbbf24" /> : <Moon size={14} color="var(--color-primary)" />}
+            <Globe size={13} />
+            <span>{i18n.language.startsWith('en') ? 'EN' : 'PT'}</span>
           </button>
-        )}
 
-        {/* Link GitHub */}
-        <a
-          href="https://github.com/Yared98/planningyrd"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            padding: '0.35rem 0.55rem',
-            borderRadius: 'var(--radius-full)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            textDecoration: 'none',
-            color: 'var(--text-main)',
-            background: 'var(--bg-subtle)',
-            border: '1px solid var(--border-subtle)',
-          }}
-          title="Ver código-fonte do PlanningYrd no GitHub"
-          aria-label="GitHub"
-        >
-          <GithubIcon size={14} />
-        </a>
-      </div>
+          {/* Alternador de Tema */}
+          {onToggleTheme && (
+            <button
+              onClick={onToggleTheme}
+              className="btn-secondary"
+              style={{
+                padding: '0.35rem 0.65rem',
+                borderRadius: 'var(--radius-full)',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                background: 'var(--bg-subtle)',
+                border: '1px solid var(--border-subtle)',
+                color: 'var(--text-main)',
+                cursor: 'pointer',
+              }}
+              title={theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
+            >
+              {theme === 'dark' ? <Sun size={14} color="#fbbf24" /> : <Moon size={14} color="var(--color-primary)" />}
+            </button>
+          )}
 
-      <div style={{ maxWidth: '480px', width: '100%', textAlign: 'center', marginBottom: '2rem' }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.75rem', background: 'var(--bg-subtle)', border: '1px solid var(--border-subtle)', padding: '0.5rem 1rem', borderRadius: 'var(--radius-full)', marginBottom: '1rem' }}>
-          <div className="brand-icon-box">
-            <Layers size={18} />
-          </div>
-          <span style={{ fontWeight: 800, fontSize: '1.25rem', letterSpacing: '-0.02em' }}>
-            PlanningYrd
-          </span>
+          {/* Link GitHub */}
+          <a
+            href="https://github.com/Yared98/planningyrd"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              padding: '0.35rem 0.55rem',
+              borderRadius: 'var(--radius-full)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              textDecoration: 'none',
+              color: 'var(--text-main)',
+              background: 'var(--bg-subtle)',
+              border: '1px solid var(--border-subtle)',
+            }}
+            title="Ver código-fonte do PlanningYrd no GitHub"
+            aria-label="GitHub"
+          >
+            <GithubIcon size={14} />
+          </a>
         </div>
+      </header>
+
+      {/* Main Content Area */}
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '2rem 1.5rem',
+          width: '100%',
+        }}
+      >
+        <div style={{ maxWidth: '480px', width: '100%', textAlign: 'center', marginBottom: '2rem' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'var(--color-primary-subtle)', border: '1px solid var(--border-primary)', padding: '0.35rem 0.85rem', borderRadius: 'var(--radius-full)', marginBottom: '1rem', color: 'var(--color-primary)', fontSize: '0.8rem', fontWeight: 700 }}>
+            <Layers size={14} />
+            <span>PlanningYrd</span>
+          </div>
 
         <h1 style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.2 }}>
           {t('app.subtitle')}
@@ -998,6 +1006,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       )}
 
       <Footer style={{ marginTop: '2.5rem', width: '100%', maxWidth: '480px' }} />
+
+      </div>
 
       {/* Modal MCP */}
       <McpModal

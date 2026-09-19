@@ -85,12 +85,23 @@ export const Header: React.FC<HeaderProps> = ({
     <>
       <header className="app-header">
       <div className="header-left">
-        <div className="brand-logo">
+        <a
+          href="/"
+          onClick={(e) => {
+            e.preventDefault();
+            onLeaveRoom();
+          }}
+          className="brand-logo"
+          title="PlanningYrd - Início"
+          aria-label="PlanningYrd Home"
+        >
           <div className="brand-icon-box">
             <Layers size={18} />
           </div>
-          <span>PlanningYrd</span>
-        </div>
+          <span className="brand-title">
+            Planning<span style={{ color: 'var(--color-primary)' }}>Yrd</span>
+          </span>
+        </a>
 
         <EcosystemSwitcher currentApp="planning" />
 
