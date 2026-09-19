@@ -21,6 +21,8 @@ const resources = {
         activeStory: 'História em Foco',
         facilitator: 'FAC',
         facilitatorTooltip: 'Você é o Facilitador desta sessão',
+        onlineCount: 'online',
+        reconnecting: 'Reconectando...',
       },
       lobby: {
         createRoomTab: 'Criar Nova Sala',
@@ -182,6 +184,8 @@ const resources = {
         activeStory: 'Focus Story',
         facilitator: 'FAC',
         facilitatorTooltip: 'You are the Facilitator of this session',
+        onlineCount: 'online',
+        reconnecting: 'Reconnecting...',
       },
       lobby: {
         createRoomTab: 'Create New Room',

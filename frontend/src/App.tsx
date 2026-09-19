@@ -164,6 +164,8 @@ export function App() {
         room={currentRoom}
         currentStory={socket.currentStory}
         me={me}
+        onlineCount={socket.participants.length}
+        isConnected={socket.isConnected}
         timer={socket.timer}
         onOpenBacklog={() => setIsBacklogOpen(true)}
         onOpenExport={() => setIsExportOpen(true)}

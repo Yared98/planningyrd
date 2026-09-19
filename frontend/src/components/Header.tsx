@@ -13,6 +13,7 @@ import {
   Clock,
   Layers,
   Bot,
+  Users,
 } from 'lucide-react';
 import { EcosystemSwitcher } from './EcosystemSwitcher';
 import { McpModal } from './McpModal';
@@ -29,6 +30,8 @@ interface HeaderProps {
   onSendReaction: (emoji: string) => void;
   onLeaveRoom: () => void;
   theme?: 'dark' | 'light';
+  onlineCount?: number;
+  isConnected?: boolean;
   onToggleTheme?: () => void;
 }
 
@@ -42,6 +45,8 @@ export const Header: React.FC<HeaderProps> = ({
   onSendReaction,
   onLeaveRoom,
   theme: propTheme,
+  onlineCount = 1,
+  isConnected = true,
   onToggleTheme,
 }) => {
   const { t, i18n } = useTranslation();
@@ -145,6 +150,67 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       <div className="header-right" style={{ gap: '0.4rem' }}>
+        {/* Indicador de Presença Online */}
+        {isConnected ? (
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              padding: '0.28rem 0.65rem',
+              backgroundColor: 'var(--color-success-bg, rgba(16, 185, 129, 0.12))',
+              border: '1px solid var(--color-success-border, rgba(16, 185, 129, 0.25))',
+              borderRadius: 'var(--radius-full, 9999px)',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              color: 'var(--color-success, #10b981)',
+            }}
+            title={`${onlineCount} ${t('nav.onlineCount', 'online')}`}
+          >
+            <span
+              style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                backgroundColor: 'var(--color-success, #10b981)',
+                display: 'inline-block',
+              }}
+              className="animate-pulse"
+            />
+            <Users size={12} />
+            <span>{onlineCount} {t('nav.onlineCount', 'online')}</span>
+          </div>
+        ) : (
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              padding: '0.28rem 0.65rem',
+              backgroundColor: 'rgba(245, 158, 11, 0.12)',
+              border: '1px solid rgba(245, 158, 11, 0.25)',
+              borderRadius: 'var(--radius-full, 9999px)',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              color: '#f59e0b',
+            }}
+            title={t('nav.reconnecting', 'Reconectando...')}
+          >
+            <span
+              style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                backgroundColor: '#f59e0b',
+                display: 'inline-block',
+              }}
+              className="animate-pulse"
+            />
+            <Users size={12} />
+            <span>{t('nav.reconnecting', 'Reconectando...')}</span>
+          </div>
+        )}
+
         {me && (
           <div
             className="header-btn-text"
