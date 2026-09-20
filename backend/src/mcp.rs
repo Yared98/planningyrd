@@ -1,5 +1,6 @@
 use axum::{
     extract::State,
+    http::HeaderMap,
     response::{IntoResponse, Json},
 };
 use serde::{Deserialize, Serialize};
@@ -42,8 +43,27 @@ pub struct JsonRpcError {
     pub data: Option<Value>,
 }
 
+fn extract_facilitator_token(headers: &HeaderMap, args: &Value) -> Option<String> {
+    if let Some(arg_token) = args.get("facilitator_token").and_then(|t| t.as_str()) {
+        if !arg_token.trim().is_empty() {
+            return Some(arg_token.trim().to_string());
+        }
+    }
+    if let Some(auth) = headers.get("authorization").and_then(|h| h.to_str().ok()) {
+        if let Some(token) = auth.strip_prefix("Bearer ") {
+            return Some(token.trim().to_string());
+        }
+        return Some(auth.trim().to_string());
+    }
+    if let Some(token) = headers.get("x-facilitator-token").and_then(|h| h.to_str().ok()) {
+        return Some(token.trim().to_string());
+    }
+    None
+}
+
 pub async fn handle_mcp_request(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Json(req): Json<JsonRpcRequest>,
 ) -> impl IntoResponse {
     let id = req.id.clone();
@@ -72,7 +92,7 @@ pub async fn handle_mcp_request(
                     {
                         "uri": "planning://room/{room_id}/consensus",
                         "name": "Planning Room Consensus & Votes",
-                        "description": "Current voting statistics, agreement percentage, mode, average and vote breakdown.",
+                        "description": "Current voting statistics, agreement percentage, mode, average and vote breakdown. Votes are masked during active voting unless authorized as facilitator.",
                         "mimeType": "application/json"
                     }
                 ]
@@ -84,7 +104,7 @@ pub async fn handle_mcp_request(
                 .and_then(|p| p.get("uri"))
                 .and_then(|u| u.as_str())
                 .unwrap_or("");
-            read_resource(&state, uri).await
+            read_resource(&state, &headers, uri).await
         }
 
         "tools/list" => {
@@ -92,11 +112,12 @@ pub async fn handle_mcp_request(
                 "tools": [
                     {
                         "name": "planning_import_stories",
-                        "description": "Imports a batch of stories into the room backlog from a Kanban board, Jira, or AI planner. Broadcasts updates to all connected poker participants in real time.",
+                        "description": "Imports a batch of stories into the room backlog. Requer token de Facilitador.",
                         "inputSchema": {
                             "type": "object",
                             "properties": {
                                 "room_id": { "type": "string", "description": "The ULID or identifier of the planning room" },
+                                "facilitator_token": { "type": "string", "description": "Facilitator token (optional if provided via Authorization header)" },
                                 "stories": {
                                     "type": "array",
                                     "items": {
@@ -128,25 +149,27 @@ pub async fn handle_mcp_request(
                     },
                     {
                         "name": "planning_select_story",
-                        "description": "Sets the active story being estimated and resets the voting round for all participants.",
+                        "description": "Sets the active story being estimated and resets the voting round for all participants. Requer token de Facilitador.",
                         "inputSchema": {
                             "type": "object",
                             "properties": {
                                 "room_id": { "type": "string", "description": "The ULID of the planning room" },
-                                "story_id": { "type": "string", "description": "ID of the story to select as active" }
+                                "story_id": { "type": "string", "description": "ID of the story to select as active" },
+                                "facilitator_token": { "type": "string", "description": "Facilitator token (optional if provided via Authorization header)" }
                             },
                             "required": ["room_id", "story_id"]
                         }
                     },
                     {
                         "name": "planning_save_estimate",
-                        "description": "Records the consensus final score for a story and advances the backlog to the next pending story.",
+                        "description": "Records the consensus final score for a story and advances the backlog to the next pending story. Requer token de Facilitador.",
                         "inputSchema": {
                             "type": "object",
                             "properties": {
                                 "room_id": { "type": "string", "description": "The ULID of the planning room" },
                                 "story_id": { "type": "string", "description": "ID of the estimated story" },
-                                "score": { "type": "string", "description": "Final story points / estimate value (e.g., '5', '8', 'M', '☕')" }
+                                "score": { "type": "string", "description": "Final story points / estimate value (e.g., '5', '8', 'M', '☕')" },
+                                "facilitator_token": { "type": "string", "description": "Facilitator token (optional if provided via Authorization header)" }
                             },
                             "required": ["room_id", "story_id", "score"]
                         }
@@ -171,7 +194,7 @@ pub async fn handle_mcp_request(
             let tool_name = params.get("name").and_then(|v| v.as_str()).unwrap_or("");
             let arguments = params.get("arguments").cloned().unwrap_or(json!({}));
 
-            call_tool(&state, tool_name, arguments).await
+            call_tool(&state, &headers, tool_name, arguments).await
         }
 
         unknown => Err(JsonRpcError {
@@ -199,73 +222,109 @@ pub async fn handle_mcp_request(
     Json(resp)
 }
 
-async fn read_resource(state: &AppState, uri: &str) -> Result<Value, JsonRpcError> {
-    if let Some(room_id) = uri.strip_prefix("planning://room/").and_then(|s| s.strip_suffix("/backlog")) {
-        let room = state.db.get_room(room_id).map_err(|e| JsonRpcError {
-            code: -32603,
-            message: format!("Database error: {}", e),
-            data: None,
-        })?.ok_or_else(|| JsonRpcError {
-            code: -32004,
-            message: format!("Room '{}' not found", room_id),
-            data: None,
-        })?;
+async fn read_resource(state: &AppState, headers: &HeaderMap, uri: &str) -> Result<Value, JsonRpcError> {
+    if let Some(room_part) = uri.strip_prefix("planning://room/") {
+        let (path_part, query_part) = match room_part.split_once('?') {
+            Some((p, q)) => (p, Some(q)),
+            None => (room_part, None),
+        };
 
-        let stories = state.db.get_stories(room_id).map_err(|e| JsonRpcError {
-            code: -32603,
-            message: format!("Failed to read stories: {}", e),
-            data: None,
-        })?;
+        if let Some(room_id) = path_part.strip_suffix("/backlog") {
+            let room = state.db.get_room(room_id).map_err(|e| JsonRpcError {
+                code: -32603,
+                message: format!("Database error: {}", e),
+                data: None,
+            })?.ok_or_else(|| JsonRpcError {
+                code: -32004,
+                message: format!("Room '{}' not found", room_id),
+                data: None,
+            })?;
 
-        return Ok(json!({
-            "contents": [{
-                "uri": uri,
-                "mimeType": "application/json",
-                "text": serde_json::to_string_pretty(&json!({
+            let stories = state.db.get_stories(room_id).map_err(|e| JsonRpcError {
+                code: -32603,
+                message: format!("Failed to read stories: {}", e),
+                data: None,
+            })?;
+
+            return Ok(json!({
+                "contents": [{
+                    "uri": uri,
+                    "mimeType": "application/json",
+                    "text": serde_json::to_string_pretty(&json!({
+                        "room_id": room.id,
+                        "room_name": room.name,
+                        "deck_type": room.deck_type,
+                        "status": room.status.to_str(),
+                        "current_story_id": room.current_story_id,
+                        "stories_count": stories.len(),
+                        "stories": stories
+                    })).unwrap()
+                }]
+            }));
+        }
+
+        if let Some(room_id) = path_part.strip_suffix("/consensus") {
+            let room = state.db.get_room(room_id).map_err(|e| JsonRpcError {
+                code: -32603,
+                message: format!("Database error: {}", e),
+                data: None,
+            })?.ok_or_else(|| JsonRpcError {
+                code: -32004,
+                message: format!("Room '{}' not found", room_id),
+                data: None,
+            })?;
+
+            let query_token = query_part.and_then(|q| {
+                q.split('&').find_map(|pair| {
+                    let mut split = pair.split('=');
+                    let key = split.next()?;
+                    let val = split.next()?;
+                    if key == "token" || key == "facilitator_token" {
+                        Some(val.to_string())
+                    } else {
+                        None
+                    }
+                })
+            });
+
+            let is_facilitator = query_token
+                .or_else(|| extract_facilitator_token(headers, &json!({})))
+                .map(|t| t == room.facilitator_token)
+                .unwrap_or(false);
+
+            let votes = state.db.get_votes(room_id, room.current_story_id.as_deref()).map_err(|e| JsonRpcError {
+                code: -32603,
+                message: format!("Failed to get votes: {}", e),
+                data: None,
+            })?;
+
+            let content_val = if room.status == RoomStatus::Voting && !is_facilitator {
+                json!({
                     "room_id": room.id,
-                    "room_name": room.name,
-                    "deck_type": room.deck_type,
-                    "status": room.status.to_str(),
                     "current_story_id": room.current_story_id,
-                    "stories_count": stories.len(),
-                    "stories": stories
-                })).unwrap()
-            }]
-        }));
-    }
-
-    if let Some(room_id) = uri.strip_prefix("planning://room/").and_then(|s| s.strip_suffix("/consensus")) {
-        let room = state.db.get_room(room_id).map_err(|e| JsonRpcError {
-            code: -32603,
-            message: format!("Database error: {}", e),
-            data: None,
-        })?.ok_or_else(|| JsonRpcError {
-            code: -32004,
-            message: format!("Room '{}' not found", room_id),
-            data: None,
-        })?;
-
-        let votes = state.db.get_votes(room_id, room.current_story_id.as_deref()).map_err(|e| JsonRpcError {
-            code: -32603,
-            message: format!("Failed to get votes: {}", e),
-            data: None,
-        })?;
-
-        let stats = crate::db::Database::calculate_consensus(&votes);
-
-        return Ok(json!({
-            "contents": [{
-                "uri": uri,
-                "mimeType": "application/json",
-                "text": serde_json::to_string_pretty(&json!({
+                    "status": room.status.to_str(),
+                    "votes_count": votes.len(),
+                    "message": "Votes are hidden until cards are revealed by the facilitator."
+                })
+            } else {
+                let stats = crate::db::Database::calculate_consensus(&votes);
+                json!({
                     "room_id": room.id,
                     "current_story_id": room.current_story_id,
                     "status": room.status.to_str(),
                     "stats": stats,
                     "votes_count": votes.len()
-                })).unwrap()
-            }]
-        }));
+                })
+            };
+
+            return Ok(json!({
+                "contents": [{
+                    "uri": uri,
+                    "mimeType": "application/json",
+                    "text": serde_json::to_string_pretty(&content_val).unwrap()
+                }]
+            }));
+        }
     }
 
     Err(JsonRpcError {
@@ -275,18 +334,17 @@ async fn read_resource(state: &AppState, uri: &str) -> Result<Value, JsonRpcErro
     })
 }
 
-async fn call_tool(state: &AppState, name: &str, args: Value) -> Result<Value, JsonRpcError> {
+async fn call_tool(
+    state: &AppState,
+    headers: &HeaderMap,
+    name: &str,
+    args: Value,
+) -> Result<Value, JsonRpcError> {
     match name {
         "planning_import_stories" => {
             let room_id = args.get("room_id").and_then(|v| v.as_str()).ok_or_else(|| JsonRpcError {
                 code: -32602,
                 message: "Missing 'room_id' argument".to_string(),
-                data: None,
-            })?;
-
-            let stories_val = args.get("stories").and_then(|v| v.as_array()).ok_or_else(|| JsonRpcError {
-                code: -32602,
-                message: "Missing 'stories' array argument".to_string(),
                 data: None,
             })?;
 
@@ -297,6 +355,21 @@ async fn call_tool(state: &AppState, name: &str, args: Value) -> Result<Value, J
             })?.ok_or_else(|| JsonRpcError {
                 code: -32004,
                 message: format!("Room '{}' not found", room_id),
+                data: None,
+            })?;
+
+            let provided_token = extract_facilitator_token(headers, &args);
+            if provided_token.as_deref() != Some(&room.facilitator_token) {
+                return Err(JsonRpcError {
+                    code: -32003,
+                    message: "Unauthorized: facilitator_token required to import stories into room".to_string(),
+                    data: None,
+                });
+            }
+
+            let stories_val = args.get("stories").and_then(|v| v.as_array()).ok_or_else(|| JsonRpcError {
+                code: -32602,
+                message: "Missing 'stories' array argument".to_string(),
                 data: None,
             })?;
 
@@ -464,6 +537,25 @@ async fn call_tool(state: &AppState, name: &str, args: Value) -> Result<Value, J
                 data: None,
             })?;
 
+            let room = state.db.get_room(room_id).map_err(|e| JsonRpcError {
+                code: -32603,
+                message: format!("DB error: {}", e),
+                data: None,
+            })?.ok_or_else(|| JsonRpcError {
+                code: -32004,
+                message: format!("Room '{}' not found", room_id),
+                data: None,
+            })?;
+
+            let provided_token = extract_facilitator_token(headers, &args);
+            if provided_token.as_deref() != Some(&room.facilitator_token) {
+                return Err(JsonRpcError {
+                    code: -32003,
+                    message: "Unauthorized: facilitator_token required to select active story".to_string(),
+                    data: None,
+                });
+            }
+
             let story_id = args.get("story_id").and_then(|v| v.as_str()).ok_or_else(|| JsonRpcError {
                 code: -32602,
                 message: "Missing 'story_id' argument".to_string(),
@@ -506,6 +598,25 @@ async fn call_tool(state: &AppState, name: &str, args: Value) -> Result<Value, J
                 message: "Missing 'room_id' argument".to_string(),
                 data: None,
             })?;
+
+            let room = state.db.get_room(room_id).map_err(|e| JsonRpcError {
+                code: -32603,
+                message: format!("DB error: {}", e),
+                data: None,
+            })?.ok_or_else(|| JsonRpcError {
+                code: -32004,
+                message: format!("Room '{}' not found", room_id),
+                data: None,
+            })?;
+
+            let provided_token = extract_facilitator_token(headers, &args);
+            if provided_token.as_deref() != Some(&room.facilitator_token) {
+                return Err(JsonRpcError {
+                    code: -32003,
+                    message: "Unauthorized: facilitator_token required to record estimate".to_string(),
+                    data: None,
+                });
+            }
 
             let story_id = args.get("story_id").and_then(|v| v.as_str()).ok_or_else(|| JsonRpcError {
                 code: -32602,
@@ -578,22 +689,35 @@ async fn call_tool(state: &AppState, name: &str, args: Value) -> Result<Value, J
             })?;
 
             let stories = state.db.get_stories(room_id).unwrap_or_default();
-            let participants: Vec<Participant> = state.rooms
-                .get(room_id)
-                .map(|s| s.participants.iter().map(|p| p.value().clone()).collect())
+            let current_story = room.current_story_id.as_deref()
+                .and_then(|id| stories.iter().find(|s| s.id == id).cloned());
+
+            let participants: Vec<Participant> = state.rooms.get(room_id)
+                .map(|session| session.participants.iter().map(|p| p.value().clone()).collect())
                 .unwrap_or_default();
 
+            let votes = state.db.get_votes(room_id, room.current_story_id.as_deref()).unwrap_or_default();
+            let stats = if room.status == RoomStatus::Revealed {
+                Some(crate::db::Database::calculate_consensus(&votes))
+            } else {
+                None
+            };
+
+            let cards = crate::models::DeckType::from_str(&room.deck_type).default_cards();
+
             Ok(json!({
-                "room": {
-                    "id": room.id,
-                    "name": room.name,
-                    "deck_type": room.deck_type,
-                    "status": room.status.to_str(),
-                    "current_story_id": room.current_story_id,
-                    "auto_reveal": room.auto_reveal
-                },
-                "stories": stories,
-                "participants": participants
+                "content": [{
+                    "type": "text",
+                    "text": serde_json::to_string_pretty(&json!({
+                        "room": room,
+                        "stories": stories,
+                        "current_story": current_story,
+                        "participants": participants,
+                        "cards": cards,
+                        "stats": stats,
+                        "votes_count": votes.len()
+                    })).unwrap()
+                }]
             }))
         }
 
@@ -626,20 +750,21 @@ mod tests {
             params: None,
         };
 
-        let _resp = handle_mcp_request(State(state), Json(req)).await;
+        let _resp = handle_mcp_request(State(state), HeaderMap::new(), Json(req)).await;
     }
 
     #[tokio::test]
     async fn test_mcp_import_stories_and_read_backlog() {
         let state = setup_test_state();
         let room_id = "test_mcp_room";
+        let facilitator_token = "token_mcp";
 
         let room = Room {
             id: room_id.to_string(),
             name: "Sprint 42 Planning".to_string(),
             deck_type: "fibonacci".to_string(),
             custom_deck: None,
-            facilitator_token: "token_mcp".to_string(),
+            facilitator_token: facilitator_token.to_string(),
             status: RoomStatus::Voting,
             auto_reveal: false,
             show_average: true,
@@ -651,7 +776,22 @@ mod tests {
         };
         state.db.create_room(&room).unwrap();
 
-        // 1. Call tool planning_import_stories
+        // 1. Call tool planning_import_stories without token -> should fail
+        let mut headers = HeaderMap::new();
+        let unauth_args = json!({
+            "room_id": room_id,
+            "stories": [
+                {
+                    "title": "Unauthorized Story"
+                }
+            ]
+        });
+        let unauth_res = call_tool(&state, &headers, "planning_import_stories", unauth_args).await;
+        assert!(unauth_res.is_err());
+        assert_eq!(unauth_res.unwrap_err().code, -32003);
+
+        // 2. Call tool planning_import_stories with header Authorization
+        headers.insert("authorization", "Bearer token_mcp".parse().unwrap());
         let import_args = json!({
             "room_id": room_id,
             "stories": [
@@ -666,21 +806,21 @@ mod tests {
             ]
         });
 
-        let call_res = call_tool(&state, "planning_import_stories", import_args).await;
+        let call_res = call_tool(&state, &headers, "planning_import_stories", import_args).await;
         assert!(call_res.is_ok());
         let val = call_res.unwrap();
         assert_eq!(val["imported_count"], 2);
 
-        // 2. Read resource planning://room/test_mcp_room/backlog
+        // 3. Read resource planning://room/test_mcp_room/backlog
         let uri = "planning://room/test_mcp_room/backlog";
-        let res = read_resource(&state, uri).await;
+        let res = read_resource(&state, &headers, uri).await;
         assert!(res.is_ok());
         let res_val = res.unwrap();
         let text = res_val["contents"][0]["text"].as_str().unwrap();
         assert!(text.contains("OAuth2 Login"));
         assert!(text.contains("WAL Mode"));
 
-        // 3. Score the first story
+        // 4. Score the first story
         let stories = state.db.get_stories(room_id).unwrap();
         let story_1_id = &stories[0].id;
         let score_args = json!({
@@ -688,7 +828,7 @@ mod tests {
             "story_id": story_1_id,
             "score": "5"
         });
-        let score_res = call_tool(&state, "planning_save_estimate", score_args).await;
+        let score_res = call_tool(&state, &headers, "planning_save_estimate", score_args).await;
         assert!(score_res.is_ok());
 
         let updated_story = state.db.get_story(story_1_id).unwrap().unwrap();
