@@ -98,6 +98,9 @@ async fn main() {
     let db = Database::new(&db_path).expect("Failed to initialize SQLite database");
     let state = AppState::new(db);
 
+    // Inicializa o token de admin (se não definido no .env, gera aleatório e exibe no console)
+    admin::get_or_init_admin_token("PlanningYrd");
+
     // Rotina periódica de auto-purge para higienização de salas antigas (Padrão: 60 dias)
     // Aceita RETENTION_DAYS unificada ou ROOM_RETENTION_DAYS específica
     let retention_days: i64 = std::env::var("RETENTION_DAYS")
