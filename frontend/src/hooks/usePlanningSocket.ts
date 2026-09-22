@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import confetti from 'canvas-confetti';
+import { soundPlayer } from '../utils/sound';
 import type {
   ConsensusStats,
   Participant,
@@ -234,6 +235,33 @@ export function usePlanningSocket({
     };
   }, [connect]);
 
+  // Live timer tick countdown
+  useEffect(() => {
+    if (!timer.isRunning || !timer.endsAt) {
+      return;
+    }
+
+    const updateTimer = () => {
+      const now = Date.now();
+      const endsAtMs = timer.endsAt! > 1e11 ? timer.endsAt! : timer.endsAt! * 1000;
+      const diff = Math.max(0, Math.ceil((endsAtMs - now) / 1000));
+      setTimer((prev) => {
+        if (!prev.isRunning) return prev;
+        if (diff <= 0) {
+          if (prev.secondsRemaining === 0 && !prev.isRunning) return prev;
+          soundPlayer.playAlarm(5);
+          return { ...prev, isRunning: false, secondsRemaining: 0, endsAt: null };
+        }
+        if (prev.secondsRemaining === diff) return prev;
+        return { ...prev, secondsRemaining: diff };
+      });
+    };
+
+    updateTimer();
+    const interval = window.setInterval(updateTimer, 250);
+    return () => clearInterval(interval);
+  }, [timer.isRunning, timer.endsAt]);
+
   // Actions
   const castVote = useCallback(
     (card_value: string) => {
@@ -298,7 +326,10 @@ export function usePlanningSocket({
   );
 
   const timerAction = useCallback(
-    (action: 'start' | 'pause' | 'reset', duration_seconds?: number) => {
+    (action: 'start' | 'pause' | 'reset' | 'add_seconds', duration_seconds?: number) => {
+      if (action === 'reset' || action === 'add_seconds' || action === 'start') {
+        soundPlayer.stop();
+      }
       sendMessage({ type: 'timer_action', action, duration_seconds });
     },
     [sendMessage]

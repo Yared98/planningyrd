@@ -150,7 +150,8 @@ export const RevealAnalytics: React.FC<RevealAnalyticsProps> = ({
             {/* Body */}
             <div className="analytics-modal-body">
               <div className={`consensus-banner ${getConsensusClass()}`}>
-                {getConsensusText()}
+                <span>{stats.unanimous ? '🎉' : stats.agreement_percentage >= 70 ? '⚡' : '⚠️'}</span>
+                <span>{getConsensusText()}</span>
               </div>
 
               {/* Stats Grid */}

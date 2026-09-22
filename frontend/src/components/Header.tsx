@@ -295,8 +295,11 @@ export const Header: React.FC<HeaderProps> = ({
           </span>
         </div>
 
-        {timer.isRunning && (
-          <div className="timer-pill running" style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}>
+        {(timer.isRunning || timer.secondsRemaining > 0) && (
+          <div
+            className={`timer-pill ${timer.isRunning ? 'running' : 'paused'}`}
+            style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}
+          >
             <Clock size={13} />
             <span>{formatTimer(timer.secondsRemaining)}</span>
           </div>

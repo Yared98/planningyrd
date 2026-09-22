@@ -717,17 +717,66 @@ async fn handle_client_message(
                 warn!("Participante {} tentou controlar timer sem ser facilitador na sala {}", p_id, room_id);
                 return;
             }
-            let dur = duration_seconds.unwrap_or(120);
-            let now = SystemTime::now()
+            let current_room = state.db.get_room(room_id).ok().flatten();
+            let now_ms = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
-                .as_secs() as i64;
+                .as_millis() as i64;
 
             let (is_running, remaining, ends_at) = match action.as_str() {
-                "start" => (true, dur, Some(now + dur)),
-                "pause" => (false, dur, None),
+                "start" => {
+                    let dur = match duration_seconds {
+                        Some(d) if d > 0 => d,
+                        _ => {
+                            if let Some(ref r) = current_room {
+                                if r.timer_seconds_remaining > 0 {
+                                    r.timer_seconds_remaining
+                                } else {
+                                    120
+                                }
+                            } else {
+                                120
+                            }
+                        }
+                    };
+                    let ends = now_ms + (dur * 1000);
+                    (true, dur, Some(ends))
+                }
+                "pause" => {
+                    let rem = if let Some(ref r) = current_room {
+                        if let Some(ends) = r.timer_ends_at {
+                            let ends_ms = if ends > 100_000_000_000 { ends } else { ends * 1000 };
+                            ((ends_ms - now_ms) / 1000).max(0)
+                        } else {
+                            r.timer_seconds_remaining
+                        }
+                    } else {
+                        0
+                    };
+                    (false, rem, None)
+                }
+                "add_seconds" => {
+                    let add = duration_seconds.unwrap_or(60);
+                    let is_run = current_room.as_ref().map(|r| r.timer_is_running).unwrap_or(false);
+                    let rem = if let Some(ref r) = current_room {
+                        if let Some(ends) = r.timer_ends_at {
+                            let ends_ms = if ends > 100_000_000_000 { ends } else { ends * 1000 };
+                            ((ends_ms - now_ms) / 1000).max(0) + add
+                        } else {
+                            r.timer_seconds_remaining + add
+                        }
+                    } else {
+                        add
+                    };
+                    let ends = if is_run {
+                        Some(now_ms + (rem * 1000))
+                    } else {
+                        None
+                    };
+                    (is_run, rem, ends)
+                }
                 "reset" => (false, 0, None),
-                _ => (false, dur, None),
+                _ => (false, 0, None),
             };
 
             let _ = state
@@ -742,6 +791,29 @@ async fn handle_client_message(
                     timer_ends_at: ends_at,
                 },
             );
+
+            // Auto-expiração do timer quando zerar
+            if is_running {
+                let state_clone = state.clone();
+                let room_id_clone = room_id.to_string();
+                let expected_ends_at = ends_at;
+                tokio::spawn(async move {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(remaining as u64)).await;
+                    if let Ok(Some(room)) = state_clone.db.get_room(&room_id_clone) {
+                        if room.timer_is_running && room.timer_ends_at == expected_ends_at {
+                            let _ = state_clone.db.update_room_timer(&room_id_clone, false, 0, None);
+                            state_clone.broadcast_to_room(
+                                &room_id_clone,
+                                ServerMessage::TimerUpdated {
+                                    timer_is_running: false,
+                                    timer_seconds_remaining: 0,
+                                    timer_ends_at: None,
+                                },
+                            );
+                        }
+                    }
+                });
+            }
         }
 
         ClientMessage::Reaction { emoji } => {
