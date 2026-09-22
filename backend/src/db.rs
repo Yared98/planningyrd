@@ -4,11 +4,14 @@ use rusqlite::{params, Connection, Result};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
-use crate::models::{ConsensusStats, Room, RoomStatus, Story, StoryStatus, VoteRecord};
+use crate::models::{
+    AdminMetrics, AdminRoomSummary, ConsensusStats, Room, RoomStatus, Story, StoryStatus, VoteRecord,
+};
 
 #[derive(Clone)]
 pub struct Database {
     conn: Arc<Mutex<Connection>>,
+    pub path: String,
 }
 
 impl Database {
@@ -23,6 +26,7 @@ impl Database {
 
         let db = Self {
             conn: Arc::new(Mutex::new(conn)),
+            path: path.to_string(),
         };
         db.migrate()?;
         Ok(db)
@@ -155,6 +159,78 @@ impl Database {
             params![cutoff_ms],
         )?;
         Ok(count)
+    }
+
+    pub fn delete_room(&self, id: &str) -> Result<usize> {
+        let conn = self.get_conn();
+        let count = conn.execute("DELETE FROM rooms WHERE id = ?1", params![id])?;
+        Ok(count)
+    }
+
+    pub fn get_admin_metrics(&self) -> Result<AdminMetrics> {
+        let conn = self.get_conn();
+        let total_rooms: i64 = conn.query_row("SELECT COUNT(*) FROM rooms", [], |r| r.get(0))?;
+
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as i64;
+        let thirty_days_ms = now - (30 * 24 * 3600 * 1000);
+        let active_rooms_30d: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM rooms WHERE created_at >= ?1",
+            params![thirty_days_ms],
+            |r| r.get(0),
+        )?;
+
+        let total_stories: i64 = conn.query_row("SELECT COUNT(*) FROM stories", [], |r| r.get(0))?;
+        let total_votes: i64 = conn.query_row("SELECT COUNT(*) FROM votes", [], |r| r.get(0))?;
+        let distinct_participants: i64 = conn.query_row(
+            "SELECT COUNT(DISTINCT participant_id) FROM votes",
+            [],
+            |r| r.get(0),
+        )?;
+
+        let db_size_bytes = std::fs::metadata(&self.path).map(|m| m.len()).unwrap_or(0);
+
+        Ok(AdminMetrics {
+            total_rooms,
+            active_rooms_30d,
+            total_stories,
+            total_votes,
+            distinct_participants,
+            db_size_bytes,
+        })
+    }
+
+    pub fn list_admin_rooms(&self, limit: usize) -> Result<Vec<AdminRoomSummary>> {
+        let conn = self.get_conn();
+        let mut stmt = conn.prepare(
+            "SELECT r.id, r.name, r.deck_type, r.status, r.created_at,
+                    (SELECT COUNT(*) FROM stories s WHERE s.room_id = r.id) AS story_count,
+                    (SELECT COUNT(*) FROM votes v WHERE v.room_id = r.id) AS vote_count
+             FROM rooms r
+             ORDER BY r.created_at DESC
+             LIMIT ?1",
+        )?;
+
+        let rows = stmt.query_map(params![limit as i64], |row| {
+            let status_str: String = row.get(3)?;
+            Ok(AdminRoomSummary {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                deck_type: row.get(2)?,
+                status: status_str,
+                created_at: row.get(4)?,
+                story_count: row.get(5)?,
+                vote_count: row.get(6)?,
+            })
+        })?;
+
+        let mut res = Vec::new();
+        for r in rows {
+            res.push(r?);
+        }
+        Ok(res)
     }
 
     pub fn update_room_status(&self, id: &str, status: RoomStatus) -> Result<()> {

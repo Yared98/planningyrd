@@ -8,6 +8,7 @@ import { FacilitatorControls } from './components/FacilitatorControls';
 import { BacklogDrawer } from './components/BacklogDrawer';
 import { ExportModal } from './components/ExportModal';
 import { LandingPage } from './components/LandingPage';
+import { AdminDashboard } from './components/AdminDashboard';
 import type { ParticipantRole } from './types';
 import { initAnalytics, trackPageView } from './utils/analytics';
 import { saveRecentRoom } from './utils/recentRooms';
@@ -136,6 +137,13 @@ export function App() {
       });
     }
   }, [activeRoomId, socket.room, facilitatorToken, userRole, isFacilitator]);
+
+  const isAdminRoute = window.location.pathname.startsWith('/admin') || 
+    new URLSearchParams(window.location.search).get('admin') !== null;
+
+  if (isAdminRoute) {
+    return <AdminDashboard />;
+  }
 
   if (!activeRoomId) {
     return (

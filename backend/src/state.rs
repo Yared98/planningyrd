@@ -2,6 +2,7 @@
 
 use dashmap::DashMap;
 use std::sync::Arc;
+use std::time::Instant;
 use tokio::sync::broadcast;
 use crate::db::Database;
 use crate::models::{Participant, ServerMessage};
@@ -18,6 +19,8 @@ pub struct RoomSession {
 pub struct AppState {
     pub db: Database,
     pub rooms: Arc<DashMap<String, RoomSession>>,
+    pub admin_sessions: Arc<DashMap<String, Instant>>,
+    pub admin_rate_limiter: Arc<DashMap<String, (u32, Instant)>>,
 }
 
 impl AppState {
@@ -25,6 +28,8 @@ impl AppState {
         Self {
             db,
             rooms: Arc::new(DashMap::new()),
+            admin_sessions: Arc::new(DashMap::new()),
+            admin_rate_limiter: Arc::new(DashMap::new()),
         }
     }
 

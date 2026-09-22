@@ -1,3 +1,4 @@
+mod admin;
 mod db;
 mod mcp;
 mod models;
@@ -139,6 +140,7 @@ async fn main() {
     let mut app = Router::new()
         .route("/health", get(health_check))
         .nest("/api", api_routes)
+        .nest("/api/admin", admin::admin_routes())
         .route("/mcp", post(mcp::handle_mcp_request))
         .route("/robots.txt", get(robots_txt_handler))
         .route("/ws/rooms/{id}", get(ws_handler))

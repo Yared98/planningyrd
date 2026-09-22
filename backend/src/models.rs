@@ -354,3 +354,25 @@ impl From<Room> for RoomPublic {
         }
     }
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AdminMetrics {
+    pub total_rooms: i64,
+    pub active_rooms_30d: i64,
+    pub total_stories: i64,
+    pub total_votes: i64,
+    pub distinct_participants: i64,
+    pub db_size_bytes: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AdminRoomSummary {
+    pub id: String,
+    pub name: String,
+    pub deck_type: String,
+    pub status: String,
+    pub story_count: i64,
+    pub vote_count: i64,
+    pub created_at: i64,
+}
+
