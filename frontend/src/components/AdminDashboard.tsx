@@ -18,19 +18,24 @@ import {
   CheckCircle2,
   Copy,
   ExternalLink,
+  Sun,
+  Moon,
+  Clock,
+  Activity,
+  Check,
 } from 'lucide-react';
+import { EcosystemSwitcher } from './EcosystemSwitcher';
+import { Footer } from './Footer';
 import { copyToClipboard } from '../utils/clipboard';
 
 interface AdminMetrics {
-  total_rooms: i64;
+  total_rooms: number;
   active_rooms_30d: number;
   total_stories: number;
   total_votes: number;
   distinct_participants: number;
   db_size_bytes: number;
 }
-
-type i64 = number;
 
 interface AdminRoomSummary {
   id: string;
@@ -48,7 +53,15 @@ interface AdminMetricsResponse {
   rooms: AdminRoomSummary[];
 }
 
-export const AdminDashboard: React.FC = () => {
+interface AdminDashboardProps {
+  theme?: 'dark' | 'light';
+  onToggleTheme?: () => void;
+}
+
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({
+  theme = 'dark',
+  onToggleTheme,
+}) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [tokenInput, setTokenInput] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -187,7 +200,6 @@ export const AdminDashboard: React.FC = () => {
 
   const formatDate = (timestamp: number) => {
     if (!timestamp) return '-';
-    // Handle milliseconds vs seconds
     const ms = timestamp > 1e11 ? timestamp : timestamp * 1000;
     return new Date(ms).toLocaleString('pt-BR', {
       day: '2-digit',
@@ -198,140 +210,305 @@ export const AdminDashboard: React.FC = () => {
     });
   };
 
-  // Loading initial auth check
+  // Loading state
   if (isAuthenticated === null) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <RefreshCw size={28} className="spin-animation" color="var(--color-primary)" />
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)' }}>
+        <RefreshCw size={32} className="spin-animation" color="var(--color-primary)" />
       </div>
     );
   }
 
+  // Common Header component for Home style consistency
+  const renderAppHeader = (showAdminControls: boolean) => (
+    <header className="app-header">
+      <div className="header-left">
+        <a href="/" className="brand-logo" title="PlanningYrd - Início" aria-label="PlanningYrd Home">
+          <div className="brand-icon-box">
+            <Layers size={18} />
+          </div>
+          <span className="brand-title">
+            Planning<span style={{ color: 'var(--color-primary)' }}>Yrd</span>
+          </span>
+        </a>
+        <EcosystemSwitcher currentApp="planning" />
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            background: 'var(--color-primary-subtle)',
+            border: '1px solid var(--border-primary)',
+            padding: '0.25rem 0.65rem',
+            borderRadius: 'var(--radius-full)',
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            color: 'var(--color-primary)',
+          }}
+        >
+          <ShieldCheck size={13} />
+          <span>Admin Console</span>
+        </div>
+      </div>
+
+      <div className="header-right">
+        {showAdminControls && (
+          <button
+            onClick={loadMetrics}
+            disabled={isLoading}
+            className="btn-secondary"
+            style={{
+              padding: '0.35rem 0.65rem',
+              borderRadius: 'var(--radius-full)',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+            }}
+            title="Recarregar métricas"
+          >
+            <RefreshCw size={13} className={isLoading ? 'spin-animation' : ''} />
+            <span>Atualizar</span>
+          </button>
+        )}
+
+        {onToggleTheme && (
+          <button
+            onClick={onToggleTheme}
+            className="btn-secondary"
+            style={{
+              padding: '0.35rem 0.65rem',
+              borderRadius: 'var(--radius-full)',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+            }}
+            title={theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
+          >
+            {theme === 'dark' ? <Sun size={14} color="#fbbf24" /> : <Moon size={14} color="var(--color-primary)" />}
+          </button>
+        )}
+
+        <a
+          href="/"
+          className="btn-secondary"
+          style={{
+            padding: '0.35rem 0.65rem',
+            borderRadius: 'var(--radius-full)',
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            textDecoration: 'none',
+          }}
+          title="Voltar à tela inicial"
+        >
+          <ExternalLink size={13} />
+          <span>Voltar ao App</span>
+        </a>
+
+        {showAdminControls && (
+          <button
+            onClick={handleLogout}
+            className="btn-danger"
+            style={{
+              padding: '0.35rem 0.65rem',
+              borderRadius: 'var(--radius-full)',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+            }}
+            title="Encerrar sessão de admin"
+          >
+            <LogOut size={13} />
+            <span>Sair</span>
+          </button>
+        )}
+      </div>
+    </header>
+  );
+
   // Lock Screen
   if (!isAuthenticated) {
     return (
-      <div className="admin-lock-container">
-        <div className="admin-lock-card">
-          <div className="admin-lock-header">
-            <div className="admin-shield-icon">
-              <ShieldCheck size={28} color="var(--color-primary)" />
+      <div className="admin-layout">
+        {renderAppHeader(false)}
+
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '3rem 1.5rem',
+            width: '100%',
+          }}
+        >
+          {/* Hero Header */}
+          <div style={{ maxWidth: '480px', width: '100%', textAlign: 'center', marginBottom: '2rem' }}>
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+                background: 'var(--bg-subtle)',
+                border: '1px solid var(--border-subtle)',
+                padding: '0.35rem 0.85rem',
+                borderRadius: 'var(--radius-full)',
+                marginBottom: '1rem',
+                color: 'var(--color-primary)',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+              }}
+            >
+              <ShieldCheck size={14} />
+              <span>Acesso Restrito</span>
             </div>
-            <h2>Painel Administrativo</h2>
-            <p>Observabilidade e manutenção restrita do PlanningYrd</p>
+
+            <h1 style={{ fontSize: '2.25rem', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.2, margin: '0 0 0.5rem' }}>
+              Painel Administrativo
+            </h1>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', margin: 0, lineHeight: 1.5 }}>
+              Insira a chave secreta <code className="code-badge">ADMIN_TOKEN</code> para desbloquear a observabilidade do sistema.
+            </p>
           </div>
 
-          {errorMsg && (
-            <div className="admin-error-banner">
-              <AlertTriangle size={16} />
-              <span>{errorMsg}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleLogin} className="admin-lock-form">
-            <div className="form-group">
-              <label htmlFor="admin-token-input">Chave de Acesso (ADMIN_TOKEN)</label>
-              <div className="input-password-wrapper">
-                <div className="input-prefix-icon">
-                  <KeyRound size={16} />
-                </div>
-                <input
-                  id="admin-token-input"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Insira o token secreto..."
-                  value={tokenInput}
-                  onChange={(e) => setTokenInput(e.target.value)}
-                  autoFocus
-                  required
-                />
-                <button
-                  type="button"
-                  className="btn-icon password-toggle"
-                  onClick={() => setShowPassword(!showPassword)}
-                  title={showPassword ? 'Ocultar' : 'Exibir'}
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
+          {/* Form Card */}
+          <div
+            style={{
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-highlight)',
+              borderRadius: 'var(--radius-2xl)',
+              padding: '2.25rem 2rem',
+              maxWidth: '480px',
+              width: '100%',
+              boxShadow: 'var(--shadow-xl)',
+              backdropFilter: 'blur(20px)',
+            }}
+          >
+            {errorMsg && (
+              <div className="admin-error-banner" style={{ marginBottom: '1.25rem' }}>
+                <AlertTriangle size={16} />
+                <span>{errorMsg}</span>
               </div>
+            )}
+
+            <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label htmlFor="admin-token-input" style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '0.5rem' }}>
+                  Chave Secreta de Administração
+                </label>
+                <div className="input-password-wrapper">
+                  <div className="input-prefix-icon">
+                    <KeyRound size={16} />
+                  </div>
+                  <input
+                    id="admin-token-input"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Insira o ADMIN_TOKEN..."
+                    value={tokenInput}
+                    onChange={(e) => setTokenInput(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem 2.5rem',
+                      background: 'var(--bg-subtle)',
+                      border: '1px solid var(--border-subtle)',
+                      borderRadius: 'var(--radius-lg)',
+                      color: 'var(--text-main)',
+                      fontSize: '0.9rem',
+                      outline: 'none',
+                    }}
+                    autoFocus
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="btn-icon password-toggle"
+                    onClick={() => setShowPassword(!showPassword)}
+                    title={showPassword ? 'Ocultar' : 'Exibir'}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="btn-primary"
+                style={{
+                  width: '100%',
+                  padding: '0.85rem',
+                  fontSize: '0.9rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  borderRadius: 'var(--radius-lg)',
+                }}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <RefreshCw size={16} className="spin-animation" />
+                    <span>Autenticando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Lock size={16} />
+                    <span>Desbloquear Console</span>
+                  </>
+                )}
+              </button>
+            </form>
+
+            <div style={{ textAlign: 'center', marginTop: '1.5rem', paddingTop: '1.25rem', borderTop: '1px solid var(--border-subtle)' }}>
+              <a href="/" className="admin-return-link" style={{ textDecoration: 'none' }}>
+                <ArrowLeft size={14} />
+                <span>Voltar à tela inicial do PlanningYrd</span>
+              </a>
             </div>
-
-            <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <RefreshCw size={16} className="spin-animation" />
-                  <span>Validando...</span>
-                </>
-              ) : (
-                <>
-                  <Lock size={16} />
-                  <span>Desbloquear Acesso</span>
-                </>
-              )}
-            </button>
-          </form>
-
-          <div style={{ textAlign: 'center', marginTop: '1.25rem' }}>
-            <a href="/" className="admin-return-link">
-              <ArrowLeft size={14} />
-              <span>Voltar para o PlanningYrd</span>
-            </a>
           </div>
         </div>
+
+        <Footer />
       </div>
     );
   }
 
   // Authenticated Admin Dashboard
   return (
-    <div className="admin-dashboard-container">
-      {/* Top Navigation */}
-      <header className="admin-topbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-          <a href="/" className="brand-logo" title="Ir para Home">
-            <div className="brand-icon-box">
-              <Layers size={18} />
-            </div>
-            <span className="brand-title">
-              Planning<span style={{ color: 'var(--color-primary)' }}>Yrd</span>
-            </span>
-          </a>
-          <span className="admin-badge">
-            <ShieldCheck size={13} />
-            <span>Admin Console</span>
-          </span>
-        </div>
+    <div className="admin-layout">
+      {renderAppHeader(true)}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-          <button
-            className="btn-secondary btn-sm"
-            onClick={loadMetrics}
-            disabled={isLoading}
-            title="Atualizar dados"
-          >
-            <RefreshCw size={14} className={isLoading ? 'spin-animation' : ''} />
-            <span>Atualizar</span>
-          </button>
-
-          <a href="/" className="btn-secondary btn-sm" title="Abrir página inicial">
-            <ExternalLink size={14} />
-            <span>Voltar ao App</span>
-          </a>
-
-          <button
-            className="btn-danger btn-sm"
-            onClick={handleLogout}
-            title="Encerrar sessão de admin"
-          >
-            <LogOut size={14} />
-            <span>Sair</span>
-          </button>
-        </div>
-      </header>
-
-      {/* Main Content */}
       <main className="admin-main">
+        {/* Hero Section */}
+        <div style={{ marginBottom: '2.5rem' }}>
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.45rem',
+              background: 'var(--bg-subtle)',
+              border: '1px solid var(--border-subtle)',
+              padding: '0.35rem 0.85rem',
+              borderRadius: 'var(--radius-full)',
+              marginBottom: '0.85rem',
+              color: 'var(--color-primary)',
+              fontSize: '0.8rem',
+              fontWeight: 700,
+            }}
+          >
+            <Activity size={14} />
+            <span>Telemetria & Gestão</span>
+          </div>
+
+          <h1 style={{ fontSize: '2.25rem', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.2, margin: '0 0 0.5rem', color: 'var(--text-main)' }}>
+            Console Administrativo
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', margin: 0, maxWidth: '650px', lineHeight: 1.5 }}>
+            Visão analítica de adoção, sessões síncronas em memória, integridade do SQLite e controle de ciclo de vida das salas.
+          </p>
+        </div>
+
         {/* Alerts */}
         {purgeResult && (
-          <div className="admin-success-banner">
+          <div className="admin-success-banner" style={{ marginBottom: '2rem' }}>
             <CheckCircle2 size={16} />
             <span>{purgeResult}</span>
             <button
@@ -345,15 +522,15 @@ export const AdminDashboard: React.FC = () => {
         )}
 
         {errorMsg && (
-          <div className="admin-error-banner">
+          <div className="admin-error-banner" style={{ marginBottom: '2rem' }}>
             <AlertTriangle size={16} />
             <span>{errorMsg}</span>
           </div>
         )}
 
-        {/* Metric KPI Cards */}
+        {/* KPI Cards Grid with Spacious Layout */}
         {data && (
-          <div className="admin-metrics-grid">
+          <div className="admin-kpi-grid">
             <div className="admin-kpi-card">
               <div className="kpi-header">
                 <span className="kpi-title">Total de Salas</span>
@@ -362,10 +539,10 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               </div>
               <div className="kpi-value">{data.metrics.total_rooms}</div>
-              <div className="kpi-desc">Salas criadas desde o início</div>
+              <div className="kpi-desc">Salas registradas no SQLite</div>
             </div>
 
-            <div className="admin-kpi-card">
+            <div className="admin-kpi-card" style={{ padding: '1.5rem' }}>
               <div className="kpi-header">
                 <span className="kpi-title">Salas Ativas (30d)</span>
                 <div className="kpi-icon-box" style={{ background: 'rgba(16, 185, 129, 0.15)', color: 'var(--color-success)' }}>
@@ -373,18 +550,18 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               </div>
               <div className="kpi-value">{data.metrics.active_rooms_30d}</div>
-              <div className="kpi-desc">Criadas no último mês</div>
+              <div className="kpi-desc">Salas no último mês</div>
             </div>
 
             <div className="admin-kpi-card">
               <div className="kpi-header">
-                <span className="kpi-title">Salas em Memória</span>
+                <span className="kpi-title">Salas Na Memória</span>
                 <div className="kpi-icon-box" style={{ background: 'rgba(234, 179, 8, 0.15)', color: 'var(--color-warning)' }}>
                   <Radio size={18} />
                 </div>
               </div>
               <div className="kpi-value">{data.active_rooms_memory}</div>
-              <div className="kpi-desc">Sessões ativas com WebSocket</div>
+              <div className="kpi-desc">Broadcasts WebSocket ativos</div>
             </div>
 
             <div className="admin-kpi-card">
@@ -395,7 +572,7 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               </div>
               <div className="kpi-value">{data.metrics.total_stories}</div>
-              <div className="kpi-desc">{data.metrics.total_votes} votos / {data.metrics.distinct_participants} participantes</div>
+              <div className="kpi-desc">{data.metrics.total_votes} votos computados</div>
             </div>
 
             <div className="admin-kpi-card">
@@ -406,132 +583,188 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               </div>
               <div className="kpi-value">{formatBytes(data.metrics.db_size_bytes)}</div>
-              <div className="kpi-desc">Tamanho do arquivo em disco</div>
+              <div className="kpi-desc">Tamanho do arquivo local</div>
             </div>
           </div>
         )}
 
-        {/* Operational Actions */}
-        <div className="admin-section-header">
+        {/* Operational Maintenance Banner Card */}
+        <div
+          style={{
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border-highlight)',
+            borderRadius: 'var(--radius-2xl)',
+            padding: '1.75rem 2rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '1.5rem',
+            flexWrap: 'wrap',
+            marginBottom: '2.5rem',
+            boxShadow: 'var(--shadow-sm)',
+          }}
+        >
           <div>
-            <h3>Salas Recentes do Sistema</h3>
-            <p>Listagem de telemetria operacional com histórico de salas</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+              <Clock size={16} color="var(--color-primary)" />
+              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                Ciclo de Vida & Retenção de Dados
+              </h3>
+            </div>
+            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              O sistema executa expurgo automático diário para salas criadas há mais de 60 dias. Você também pode disparar a limpeza manual agora.
+            </p>
           </div>
 
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button
-              className="btn-secondary btn-sm"
-              onClick={handlePurge}
-              disabled={isPurging}
-              title="Executa limpeza de salas inativas conforme política de retenção"
-            >
-              <Trash2 size={14} color="var(--color-danger)" />
-              <span>{isPurging ? 'Executando Expurgador...' : 'Executar Purge Manual'}</span>
-            </button>
-          </div>
+          <button
+            className="btn-secondary"
+            onClick={handlePurge}
+            disabled={isPurging}
+            style={{
+              padding: '0.65rem 1.25rem',
+              borderRadius: 'var(--radius-lg)',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              gap: '0.5rem',
+              borderColor: 'rgba(239, 68, 68, 0.35)',
+              color: 'var(--color-danger)',
+            }}
+          >
+            <Trash2 size={15} />
+            <span>{isPurging ? 'Executando Purge...' : 'Forçar Limpeza de Expiradas'}</span>
+          </button>
         </div>
 
-        {/* Rooms Table */}
-        <div className="admin-table-container">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Código / ID</th>
-                <th>Nome da Sala</th>
-                <th>Baralho</th>
-                <th>Histórias</th>
-                <th>Votos</th>
-                <th>Status</th>
-                <th>Criada Em</th>
-                <th style={{ textAlign: 'right' }}>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data && data.rooms.length > 0 ? (
-                data.rooms.map((room) => (
-                  <tr key={room.id}>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                        <code className="code-badge">{room.id.substring(0, 8)}...</code>
-                        <button
-                          className="btn-icon"
-                          style={{ width: 22, height: 22 }}
-                          onClick={() => handleCopy(room.id, room.id)}
-                          title="Copiar ID completo"
-                        >
-                          {copiedId === room.id ? <CheckCircle2 size={12} color="var(--color-success)" /> : <Copy size={12} />}
-                        </button>
-                      </div>
-                    </td>
-                    <td style={{ fontWeight: 600 }}>{room.name}</td>
-                    <td>
-                      <span className="chip-subtle">{room.deck_type}</span>
-                    </td>
-                    <td>{room.story_count}</td>
-                    <td>{room.vote_count}</td>
-                    <td>
-                      <span className={`status-pill ${room.status === 'voting' ? 'active' : 'idle'}`}>
-                        {room.status}
-                      </span>
-                    </td>
-                    <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                      {formatDate(room.created_at)}
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
-                        <a
-                          href={`/?room=${room.id}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="btn-icon"
-                          style={{ width: 26, height: 26 }}
-                          title="Acessar sala"
-                        >
-                          <ExternalLink size={13} />
-                        </a>
-                        <button
-                          className="btn-icon btn-danger"
-                          style={{ width: 26, height: 26 }}
-                          onClick={() => setRoomToDelete(room.id)}
-                          title="Excluir sala"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
+        {/* Recent Rooms Table Card */}
+        <div
+          style={{
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border-highlight)',
+            borderRadius: 'var(--radius-2xl)',
+            padding: '1.75rem 2rem',
+            boxShadow: 'var(--shadow-sm)',
+            marginBottom: '3rem',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
+                Salas Recentes do Sistema
+              </h3>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '0.2rem 0 0' }}>
+                Exibindo as últimas 50 salas registradas no banco de dados
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>
+                Total: <strong>{data?.rooms.length || 0}</strong> salas
+              </span>
+            </div>
+          </div>
+
+          <div className="admin-table-container" style={{ border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)' }}>
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Nome da Sala</th>
+                  <th>Baralho</th>
+                  <th style={{ textAlign: 'center' }}>Histórias</th>
+                  <th style={{ textAlign: 'center' }}>Votos</th>
+                  <th>Status</th>
+                  <th>Criada Em</th>
+                  <th style={{ textAlign: 'right' }}>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data && data.rooms.length > 0 ? (
+                  data.rooms.map((room) => (
+                    <tr key={room.id}>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <code className="code-badge" style={{ fontSize: '0.78rem' }}>{room.id.substring(0, 8)}</code>
+                          <button
+                            className="btn-icon"
+                            style={{ width: 24, height: 24 }}
+                            onClick={() => handleCopy(room.id, room.id)}
+                            title="Copiar código da sala"
+                          >
+                            {copiedId === room.id ? <Check size={12} color="var(--color-success)" /> : <Copy size={12} />}
+                          </button>
+                        </div>
+                      </td>
+                      <td style={{ fontWeight: 600, color: 'var(--text-main)' }}>{room.name}</td>
+                      <td>
+                        <span className="chip-subtle" style={{ fontWeight: 600 }}>{room.deck_type}</span>
+                      </td>
+                      <td style={{ textAlign: 'center', fontFamily: 'var(--font-mono)' }}>{room.story_count}</td>
+                      <td style={{ textAlign: 'center', fontFamily: 'var(--font-mono)' }}>{room.vote_count}</td>
+                      <td>
+                        <span className={`status-pill ${room.status === 'voting' ? 'active' : 'idle'}`}>
+                          {room.status}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        {formatDate(room.created_at)}
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', gap: '0.4rem' }}>
+                          <a
+                            href={`/?room=${room.id}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="btn-icon"
+                            style={{ width: 28, height: 28 }}
+                            title="Acessar sala em nova aba"
+                          >
+                            <ExternalLink size={14} />
+                          </a>
+                          <button
+                            className="btn-icon btn-danger"
+                            style={{ width: 28, height: 28 }}
+                            onClick={() => setRoomToDelete(room.id)}
+                            title="Excluir sala permanentemente"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={8} style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)' }}>
+                      Nenhuma sala encontrada no momento.
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-                    Nenhuma sala cadastrada no momento.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        {/* Delete Confirmation Dialog */}
+        {/* Delete Confirmation Modal */}
         {roomToDelete && (
           <div className="analytics-modal-overlay" onClick={() => setRoomToDelete(null)}>
-            <div className="analytics-modal-card" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
-              <div className="analytics-modal-header">
+            <div className="analytics-modal-card" style={{ maxWidth: 440, padding: '1.75rem' }} onClick={(e) => e.stopPropagation()}>
+              <div className="analytics-modal-header" style={{ marginBottom: '1rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <AlertTriangle size={18} color="var(--color-danger)" />
-                  <h3 style={{ margin: 0, fontSize: '1rem' }}>Excluir Sala Permanentemente?</h3>
+                  <AlertTriangle size={20} color="var(--color-danger)" />
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>Excluir Sala do Sistema?</h3>
                 </div>
               </div>
               <div className="analytics-modal-body">
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
-                  A exclusão removerá todas as histórias do backlog e registros de votos associados a esta sala em cascata. Esta ação é irreversível.
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
+                  A exclusão da sala <code>{roomToDelete}</code> removerá todas as histórias do backlog e votos associados em cascata. Esta ação não poderá ser desfeita.
                 </p>
-                <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                  <button className="btn-secondary btn-sm" onClick={() => setRoomToDelete(null)}>
+                <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '0.65rem' }}>
+                  <button className="btn-secondary" style={{ padding: '0.5rem 1rem' }} onClick={() => setRoomToDelete(null)}>
                     Cancelar
                   </button>
                   <button
-                    className="btn-danger btn-sm"
+                    className="btn-danger"
+                    style={{ padding: '0.5rem 1rem' }}
                     onClick={() => handleDeleteRoom(roomToDelete)}
                   >
                     Confirmar Exclusão
@@ -542,6 +775,8 @@ export const AdminDashboard: React.FC = () => {
           </div>
         )}
       </main>
+
+      <Footer />
     </div>
   );
 };
