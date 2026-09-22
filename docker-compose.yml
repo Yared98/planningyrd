@@ -14,6 +14,7 @@ services:
       - ROOM_RETENTION_DAYS=60
       - UMAMI_SCRIPT_URL=${UMAMI_SCRIPT_URL:-}
       - UMAMI_WEBSITE_ID=${UMAMI_WEBSITE_ID:-}
+      - ADMIN_TOKEN=${ADMIN_TOKEN:-}
     volumes:
       - planning-data:/app/data
 
