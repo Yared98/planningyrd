@@ -22,7 +22,7 @@ RUN npm run build
 # ==============================================================================
 # Stage 2: Build Backend (Rust + Axum)
 # ==============================================================================
-FROM rust:1.80-alpine AS backend-builder
+FROM rust:1.98-alpine AS backend-builder
 RUN apk add --no-cache musl-dev sqlite-dev build-base
 
 WORKDIR /app/backend
@@ -36,7 +36,7 @@ RUN touch src/main.rs && cargo build --release
 # ==============================================================================
 # Stage 3: Minimal Runtime
 # ==============================================================================
-FROM alpine:3.20 AS runner
+FROM alpine:3.24 AS runner
 RUN apk add --no-cache ca-certificates libgcc
 
 WORKDIR /app

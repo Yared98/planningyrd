@@ -8,7 +8,7 @@ axum = { version = "0.8", features = ["ws"] }
 tokio = { version = "1.40", features = ["full"] }
 tower = "0.5"
 tower-http = { version = "0.6", features = ["cors", "trace", "fs"] }
-rusqlite = { version = "0.32", features = ["bundled"] }
+rusqlite = { version = "0.43", features = ["bundled", "fallible_uint"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 ulid = { version = "1.1", features = ["serde"] }
